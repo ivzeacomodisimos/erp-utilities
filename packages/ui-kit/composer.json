@@ -1,0 +1,22 @@
+{
+  "license": "MIT",
+  "require": {
+    "php": ">=7.2"
+  },
+  "description": "PHP component trees rendered with Vue 3 and Quasar",
+  "type": "library",
+  "autoload-dev": {
+    "psr-4": {
+      "Ivandzb\\UiKit\\Tests\\": "tests/"
+    }
+  },
+  "autoload": {
+    "psr-4": {
+      "Ivandzb\\UiKit\\": "src/"
+    }
+  },
+  "name": "ivandzb/ui-kit",
+  "scripts": {
+    "test": "php tests/run.php"
+  }
+}

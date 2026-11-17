@@ -1,0 +1,15 @@
+{
+  "name": "erp-utilities",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  },
+  "scripts": {
+    "setup:ui": "npm --prefix packages/ui-kit/quasar ci --ignore-scripts && npm --prefix packages/crud-kit/quasar ci --ignore-scripts",
+    "test:ui": "npm --prefix packages/ui-kit/quasar test && npm --prefix packages/crud-kit/quasar test",
+    "build": "npm --prefix packages/ui-kit/quasar run build && npm --prefix packages/crud-kit/quasar run build",
+    "dev": "concurrently -k -n ui-kit,crud-kit \"npm --prefix packages/ui-kit/quasar run dev\" \"npm --prefix packages/crud-kit/quasar run dev\"",
+    "test:integration": "node tests/kits-browser.mjs"
+  }
+}

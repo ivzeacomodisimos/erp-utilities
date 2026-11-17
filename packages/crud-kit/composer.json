@@ -1,0 +1,29 @@
+{
+  "name": "ivandzb/crud-kit",
+  "description": "Declarative CRUD screens for PHP: define fields once, get server-side paging, filtering, validation and a jTable (later Vue) front end.",
+  "type": "library",
+  "license": "MIT",
+  "keywords": ["crud", "jtable", "declarative", "admin", "datagrid"],
+  "authors": [
+    {
+      "name": "Ivan Dario Zea Baena",
+      "email": "ivandzb@gmail.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.2"
+  },
+  "autoload": {
+    "psr-4": {
+      "Ivandzb\\CrudKit\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Ivandzb\\CrudKit\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "php tests/run.php"
+  }
+}

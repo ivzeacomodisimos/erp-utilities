@@ -1,0 +1,768 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Guía crud-kit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: documentación de dos columnas (índice fijo a la izquierda, lectura a la derecha), como jtable.org, con el azul corporativo de la intranet. */
+:root {
+  --bg: #f5f7fa;
+  --panel: #ffffff;
+  --fg: #1d2733;
+  --muted: #5b6878;
+  --line: #d9e1ea;
+  --accent: #3d6ea6;
+  --accent-strong: #2a5080;
+  --accent-soft: #e6eef7;
+  --code-bg: #f0f3f7;
+  --code-fg: #233040;
+  --tok-key: #2a5080;
+  --tok-str: #2f7a4d;
+  --tok-com: #7a8696;
+  --tok-var: #8a4b0f;
+  --tok-fn: #6b3fa0;
+  --warn-bg: #fff6e5;
+  --warn-line: #e0a63a;
+  --ok-bg: #eaf6ee;
+  --ok-line: #3f9a63;
+  --font-display: "Archivo", "Segoe UI", Arial, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12171e; --panel: #1a212b; --fg: #e3e9f0; --muted: #9aa7b6; --line: #2c3746;
+    --accent: #7fa8d8; --accent-strong: #a9c6ea; --accent-soft: #1f2d3f;
+    --code-bg: #0f141a; --code-fg: #d6dee8;
+    --tok-key: #8fb6e6; --tok-str: #8fd0a6; --tok-com: #6f7c8c; --tok-var: #e2ad74; --tok-fn: #c3a3ec;
+    --warn-bg: #2d2617; --warn-line: #c9952f; --ok-bg: #16281d; --ok-line: #4fae74;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12171e; --panel: #1a212b; --fg: #e3e9f0; --muted: #9aa7b6; --line: #2c3746;
+  --accent: #7fa8d8; --accent-strong: #a9c6ea; --accent-soft: #1f2d3f;
+  --code-bg: #0f141a; --code-fg: #d6dee8;
+  --tok-key: #8fb6e6; --tok-str: #8fd0a6; --tok-com: #6f7c8c; --tok-var: #e2ad74; --tok-fn: #c3a3ec;
+  --warn-bg: #2d2617; --warn-line: #c9952f; --ok-bg: #16281d; --ok-line: #4fae74;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+}
+a { color: var(--accent-strong); }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.topbar {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 10;
+  background: var(--accent-strong);
+  color: #fff;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+:root[data-theme="dark"] .topbar { background: #1f3550; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .topbar { background: #1f3550; } }
+.topbar .brand { font-family: var(--font-display); font-weight: 700; font-size: 18px; letter-spacing: .01em; }
+.topbar .brand small { font-weight: 500; opacity: .8; margin-left: 6px; font-size: 13px; }
+.topbar .spacer { flex: 1; }
+.topbar .pill { font-family: var(--font-mono); font-size: 12px; background: rgba(255,255,255,.14); padding: 2px 8px; border-radius: 3px; }
+.menu-toggle { display: none; background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.4); border-radius: 3px; padding: 4px 10px; font: inherit; cursor: pointer; }
+
+.layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  gap: 32px;
+}
+nav.toc {
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 52px);
+  align-self: start;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+  padding-block: 20px;
+}
+.toc input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--fg);
+  font: inherit;
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+.toc h4 {
+  font-family: var(--font-display);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  color: var(--muted);
+  margin: 16px 0 4px;
+}
+.toc a {
+  display: block;
+  padding: 3px 10px;
+  border-left: 2px solid transparent;
+  text-decoration: none;
+  color: var(--fg);
+  font-size: 15px;
+}
+.toc a:hover { background: var(--accent-soft); }
+.toc a.active { border-left-color: var(--accent); color: var(--accent-strong); font-weight: 600; background: var(--accent-soft); }
+
+main { padding-block: 24px 80px; min-width: 0; }
+section { padding-top: 12px; margin-bottom: 36px; scroll-margin-top: 64px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.25; }
+h1 { font-size: 34px; margin: 4px 0 10px; color: var(--accent-strong); }
+h2 { font-size: 25px; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+h3 { font-size: 18px; margin: 22px 0 6px; }
+p, li { max-width: 72ch; }
+.lead { font-size: 18px; color: var(--muted); max-width: 66ch; }
+code { font-family: var(--font-mono); font-size: .88em; background: var(--code-bg); color: var(--code-fg); padding: 1px 5px; border-radius: 3px; }
+
+.code {
+  position: relative;
+  margin: 12px 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--code-bg);
+}
+.code .label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--muted);
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.code pre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--code-fg);
+}
+.code button.copy {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  font: 12px var(--font-body);
+  background: var(--panel);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.tk-k { color: var(--tok-key); font-weight: 600; }
+.tk-s { color: var(--tok-str); }
+.tk-c { color: var(--tok-com); font-style: italic; }
+.tk-v { color: var(--tok-var); }
+.tk-f { color: var(--tok-fn); }
+
+.table-wrap { overflow-x: auto; margin: 10px 0 18px; border: 1px solid var(--line); border-radius: 4px; }
+table { border-collapse: collapse; width: 100%; background: var(--panel); font-size: 15px; }
+th { background: var(--accent); color: #fff; text-align: left; font-family: var(--font-display); font-weight: 600; font-size: 13px; letter-spacing: .02em; padding: 8px 12px; white-space: nowrap; }
+td { padding: 7px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+td code { white-space: nowrap; }
+tr:nth-child(even) td { background: var(--bg); }
+
+.note, .warn, .ok {
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 10px 14px;
+  margin: 14px 0;
+  border-radius: 0 4px 4px 0;
+  max-width: 80ch;
+}
+.warn { border-left-color: var(--warn-line); background: var(--warn-bg); }
+.ok { border-left-color: var(--ok-line); background: var(--ok-bg); }
+.note strong:first-child, .warn strong:first-child, .ok strong:first-child { display: block; font-family: var(--font-display); margin-bottom: 2px; }
+
+ol.steps { counter-reset: paso; list-style: none; padding: 0; margin: 14px 0; }
+ol.steps > li { counter-increment: paso; position: relative; padding-left: 44px; margin-bottom: 22px; max-width: none; }
+ol.steps > li::before {
+  content: counter(paso);
+  position: absolute; left: 0; top: 0;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-family: var(--font-display); font-weight: 700;
+  display: grid; place-items: center;
+}
+ol.steps > li > strong { font-family: var(--font-display); font-size: 17px; }
+
+/* Vista previa de cómo queda la pantalla */
+.preview { border: 1px solid var(--line); border-radius: 4px; background: var(--panel); padding: 14px; margin: 14px 0; overflow-x: auto; }
+.pv-filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.pv-input { border: 1px solid var(--line); border-radius: 3px; padding: 6px 10px; color: var(--muted); font-size: 14px; min-width: 150px; background: var(--panel); }
+.pv-btn { background: #3d6ea6; color: #fff; border-radius: 3px; padding: 6px 14px; font-size: 13px; font-weight: 600; letter-spacing: .03em; }
+.pv-table { min-width: 520px; border: 1px solid var(--line); }
+.pv-title { background: linear-gradient(#4a7fbc, #2f5e93); color: #fff; padding: 9px 12px; display: flex; justify-content: space-between; font-weight: 700; font-size: 15px; }
+.pv-title span:last-child { font-weight: 400; font-size: 14px; }
+.pv-table table th { background: #3d6ea6; }
+.pv-table table td { font-size: 14px; }
+.pv-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px 18px; margin-top: 10px; font-size: 14px; color: var(--muted); }
+.pv-legend b { color: var(--fg); }
+
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 12px 16px; }
+.card h3 { margin-top: 2px; }
+.card p { margin: 6px 0; }
+.tag { display: inline-block; font-family: var(--font-mono); font-size: 11px; padding: 1px 6px; border-radius: 3px; background: var(--accent-soft); color: var(--accent-strong); margin-left: 6px; vertical-align: middle; }
+
+.hidden-by-search { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (max-width: 860px) {
+  .layout { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .menu-toggle { display: inline-block; }
+  nav.toc { position: fixed; inset: 52px 0 0 0; max-height: none; background: var(--bg); padding: 16px; z-index: 9; display: none; }
+  nav.toc.open { display: block; }
+  h1 { font-size: 28px; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<header class="topbar">
+  <button class="menu-toggle" id="menu-toggle" type="button" aria-controls="toc" aria-expanded="false">Índice</button>
+  <span class="brand">crud-kit <small>mantenimientos de la intranet</small></span>
+  <span class="spacer"></span>
+  <span class="pill">packages/crud-kit · PHP 7.2+</span>
+</header>
+
+<div class="layout">
+  <nav class="toc" id="toc" aria-label="Índice">
+    <label for="buscar" class="sr">Buscar en la guía</label>
+    <input id="buscar" type="search" placeholder="Buscar: autocomplete, permisos…" autocomplete="off">
+    <h4>Empezar</h4>
+    <a href="#inicio">Qué es crud-kit</a>
+    <a href="#primer-mantenimiento">Tu primer mantenimiento</a>
+    <a href="#como-funciona">Cómo funciona por dentro</a>
+    <h4>Definición</h4>
+    <a href="#campos">Tipos de campo</a>
+    <a href="#modificadores">Modificadores de campo</a>
+    <a href="#validacion">Validación</a>
+    <a href="#autocomplete">Autocompletar (Lookup)</a>
+    <a href="#opciones">Opciones del CRUD</a>
+    <a href="#permisos">Permisos I / M / C / E</a>
+    <a href="#textos">Textos y mensajes</a>
+    <h4>Avanzado</h4>
+    <a href="#hijas">Tablas hijas</a>
+    <a href="#fuente">Datos desde un repositorio</a>
+    <a href="#ganchos">Ganchos y acciones propias</a>
+    <a href="#render">jTable o Vue 3 + Quasar</a>
+    <a href="#protocolo">Protocolo con el servidor</a>
+    <h4>Referencia</h4>
+    <a href="#ejemplos">Ejemplos en la intranet</a>
+    <a href="#problemas">Problemas frecuentes</a>
+    <a href="#v1">crud-kit frente al framework v1</a>
+  </nav>
+
+  <main id="contenido">
+    <section id="inicio" data-search="inicio qué es crud-kit declarativo">
+      <h1>Mantenimientos con crud-kit</h1>
+      <p class="lead">Describe los campos una vez y obtén la pantalla completa: listado con paginación, orden y filtros en el servidor, diálogos de crear, editar y eliminar, la misma validación en el navegador y en el servidor, y SQL parametrizado para SQL Server o MySQL.</p>
+      <p>crud-kit es el framework v2 de mantenimientos. Vive en <code>packages/crud-kit</code> como paquete independiente (no conoce nada de la intranet) y se conecta a la intranet con el adaptador <code>clases/Framework/CrudKitIntranet/</code>, que aporta la conexión, los permisos del menú y la pantalla.</p>
+      <div class="preview" aria-label="Así se ve un mantenimiento generado">
+        <div class="pv-filters">
+          <span class="pv-input">Id Sector</span>
+          <span class="pv-btn">FILTRAR</span>
+        </div>
+        <div class="pv-table">
+          <div class="pv-title"><span>Sectores de entrega</span><span>＋ Adicionar nuevo registro</span></div>
+          <table>
+            <thead><tr><th>Id Sector</th><th>Título</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>01</td><td>Sabana Norte (ejemplo)</td><td>Activo</td><td>✎ 🗑</td></tr>
+              <tr><td>02</td><td>Eje Cafetero (ejemplo)</td><td>Inactivo</td><td>✎ 🗑</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pv-legend">
+          <span><b>Filtros:</b> los campos con <code>filterable()</code></span>
+          <span><b>Columnas:</b> los campos, en el orden declarado</span>
+          <span><b>Botones:</b> según permisos y <code>readOnly()</code></span>
+        </div>
+      </div>
+    </section>
+
+    <section id="primer-mantenimiento" data-search="primer mantenimiento pasos menú pantalla definición sectores">
+      <h2>Tu primer mantenimiento</h2>
+      <p>Ejemplo real: <strong>Sectores v2</strong> del sistema de picking (<code>modulos/logistica/SectoresV2.php</code>). Son cuatro pasos.</p>
+      <ol class="steps">
+        <li>
+          <strong>Declara el CRUD</strong>
+          <p>Una función que devuelve la definición. El nombre de la tabla va calificado con la base (<code>$GLOBALS['dbnameMIntranet']</code>) para no depender de la base por defecto de la conexión.</p>
+          <div class="code" data-lang="php"><div class="label">modulos/logistica/SectoresV2.php</div><pre>&lt;?php
+
+require_once 'clases/Framework/CrudKitIntranet/CrudKitIntranet.class.php';
+
+use Ivandzb\CrudKit\Definition\Crud;
+use Ivandzb\CrudKit\Definition\Field;
+
+function sectoresV2Crud()
+{
+  return Crud::make('sectores')
+    -&gt;title('Sectores de entrega')
+    -&gt;table("{$GLOBALS['dbnameMIntranet']}.maestros.sectordespacho")
+    -&gt;fields(
+      Field::text('idsector', 'Id Sector')-&gt;key()-&gt;onlyOnCreate()-&gt;filterable()-&gt;width('10%')
+        -&gt;rules(array('required' =&gt; true, 'maxLength' =&gt; 2)),
+      Field::text('Descripcion', 'Título')-&gt;width('70%')
+        -&gt;rules(array('required' =&gt; true, 'maxLength' =&gt; 80)),
+      Field::select('Activo', 'Estado', array(1 =&gt; 'Activo', 0 =&gt; 'Inactivo'))-&gt;width('20%')
+        -&gt;rules(array('required' =&gt; true))
+    )
+    -&gt;permissions(array('delete' =&gt; 'E'))
+    -&gt;messages(array('loadingMessage' =&gt; 'Cargando sectores...'));
+}</pre></div>
+        </li>
+        <li>
+          <strong>Crea la pantalla</strong>
+          <p>Une la definición con la conexión y la URL de la opción de menú. Esa URL es la misma que pinta la pantalla y la que recibe las peticiones de datos.</p>
+          <div class="code" data-lang="php"><div class="label">mismo archivo</div><pre>function sectoresV2Pantalla()
+{
+  return CrudKitIntranet::pantalla(
+    sectoresV2Crud(),
+    SingletonDB::obtenerDBMsSQL(),          // MsSQL_DB o MySQL_DB
+    'index.php?modulo=logistica&amp;file=mant_lista_picking&amp;nombreOpcion=' . rawurlencode('Sectores v2')
+  );
+}</pre></div>
+        </li>
+        <li>
+          <strong>Agrégala al menú del módulo</strong>
+          <p>La pantalla tiene los mismos métodos que los mantenimientos jTable de siempre (<code>getHtml()</code> y <code>action()</code>), así que entra en el flujo existente sin cambios.</p>
+          <div class="code" data-lang="php"><div class="label">modulos/logistica/mant_lista_picking.php</div><pre>require_once 'modulos/logistica/SectoresV2.php';
+
+// en getMenu():
+$barraH_izquierda-&gt;addOpcionConSeguridad("Sectores v2", "Sectores v2", "{$index}&amp;file=mant_lista_picking", Lista_picking_menu::OPCION_SECTORES);
+
+// en rutas():
+case "Sectores v2":
+  $obj = sectoresV2Pantalla();
+  break;
+
+// el módulo ya hace:
+if (!isset($_REQUEST['action'])) { $tdBloqueCentro-&gt;addHtml($obj-&gt;getHtml()); }
+else { $obj-&gt;action($_REQUEST); }</pre></div>
+        </li>
+        <li>
+          <strong>Pruébala</strong>
+          <p>Abre la opción, filtra, crea, edita y elimina un registro de prueba. Para ver la misma pantalla con la otra tecnología, agrega <code>&amp;render=quasar</code> o <code>&amp;render=jtable</code> a la URL.</p>
+        </li>
+      </ol>
+      <div class="ok"><strong>Eso es todo</strong>No escribes SQL, ni JavaScript, ni manejo de JSON, paginación o errores. El framework genera las consultas parametrizadas, valida y responde.</div>
+    </section>
+
+    <section id="como-funciona" data-search="cómo funciona flujo petición dispatcher crud action">
+      <h2>Cómo funciona por dentro</h2>
+      <div class="grid2">
+        <div class="card"><h3>Al pintar</h3><p><code>getHtml()</code> genera el HTML y el JavaScript de la tabla (jTable o Quasar) a partir de la definición, con los botones que el usuario tiene permitidos.</p></div>
+        <div class="card"><h3>Al pedir datos</h3><p>La tabla llama a la misma URL con <code>crud=&lt;id&gt;&amp;action=list|create|update|delete|autocomplete</code>. <code>action()</code> valida, consulta y responde JSON. Luego termina la petición.</p></div>
+        <div class="card"><h3>SQL</h3><p>Con <code>table()</code> el framework arma <code>SELECT/INSERT/UPDATE/DELETE</code> parametrizados. En SQL Server pagina con <code>OFFSET … FETCH</code> y en MySQL con <code>LIMIT</code>.</p></div>
+        <div class="card"><h3>Partes</h3><p>Definición (<code>Crud</code>, <code>Field</code>, <code>Lookup</code>) · servidor (<code>Dispatcher</code>, <code>Validator</code>) · datos (<code>TableDataSource</code> o tu repositorio) · renderizadores (jTable, Quasar) · puertos (conexión, permisos, textos).</p></div>
+      </div>
+    </section>
+
+    <section id="campos" data-search="campos tipos field text number textarea select date datetime checkbox autocomplete hidden password">
+      <h2>Tipos de campo</h2>
+      <p>Cada campo se crea con <code>Field::tipo($nombre, $titulo)</code>. El nombre es la columna de la tabla (o la clave del registro si usas un repositorio).</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Fábrica</th><th>Control en el formulario</th><th>Notas</th></tr></thead>
+        <tbody>
+          <tr><td><code>Field::text('nombre', 'Título')</code></td><td>caja de texto</td><td></td></tr>
+          <tr><td><code>Field::number('cantidad', 'Cantidad')</code></td><td>caja de texto</td><td>agrega la regla <code>numeric</code></td></tr>
+          <tr><td><code>Field::textarea('obs', 'Observaciones')</code></td><td>área de texto</td><td></td></tr>
+          <tr><td><code>Field::select('Activo', 'Estado', [1 =&gt; 'Activo', 0 =&gt; 'Inactivo'])</code></td><td>lista desplegable</td><td>respeta el orden declarado</td></tr>
+          <tr><td><code>Field::date('fecha', 'Fecha')</code></td><td>calendario</td><td>3er parámetro: formato de jQuery UI, por defecto <code>yy-mm-dd</code></td></tr>
+          <tr><td><code>Field::datetime('creado', 'Creado')</code></td><td>texto fecha y hora</td><td></td></tr>
+          <tr><td><code>Field::checkbox('activo', 'Activo')</code></td><td>casilla</td><td>valores apagado/encendido: 0 y 1 por defecto</td></tr>
+          <tr><td><code>Field::autocomplete('ciudad', 'Ciudad', $lookup)</code></td><td>buscador</td><td>guarda el código y muestra el texto; ver <a href="#autocomplete">Lookup</a></td></tr>
+          <tr><td><code>Field::hidden('origen', 'web')</code></td><td>oculto</td><td>2º parámetro: valor por defecto</td></tr>
+          <tr><td><code>Field::password('clave', 'Clave')</code></td><td>contraseña</td><td></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="modificadores" data-search="modificadores key onlyoncreate readonly hideinlist hideinforms computed filterable width defaultvalue html display input jtable">
+      <h2>Modificadores de campo</h2>
+      <p>Se encadenan después de la fábrica: <code>Field::text('x', 'X')-&gt;key()-&gt;filterable()</code>.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Modificador</th><th>Qué hace</th></tr></thead>
+        <tbody>
+          <tr><td><code>key()</code></td><td>Clave del registro: identifica la fila para editar y eliminar. Puede haber varias (clave compuesta).</td></tr>
+          <tr><td><code>onlyOnCreate()</code></td><td>Se escribe al crear y no se puede cambiar al editar (típico de claves que digita el usuario).</td></tr>
+          <tr><td><code>readOnly()</code></td><td>Se muestra pero no se edita.</td></tr>
+          <tr><td><code>hideInList()</code></td><td>No aparece como columna del listado.</td></tr>
+          <tr><td><code>hideInForms()</code></td><td>No aparece en crear ni editar.</td></tr>
+          <tr><td><code>computed()</code></td><td>Se muestra pero nunca se graba (valores calculados por la consulta o el repositorio).</td></tr>
+          <tr><td><code>filterable()</code></td><td>Agrega un filtro sobre la tabla. Por defecto compara igual; <code>filterable(Field::FILTER_LIKE)</code> busca por contenido.</td></tr>
+          <tr><td><code>width('20%')</code></td><td>Ancho de la columna.</td></tr>
+          <tr><td><code>defaultValue($valor)</code></td><td>Valor inicial al crear.</td></tr>
+          <tr><td><code>rules([...])</code></td><td>Reglas de validación; ver <a href="#validacion">Validación</a>.</td></tr>
+          <tr><td><code>options([...])</code></td><td>Cambia las opciones de un <code>select</code>.</td></tr>
+          <tr><td><code>html()</code></td><td>El valor ya es HTML armado (y escapado) en el servidor: se pinta tal cual. Sirve en jTable y Quasar.</td></tr>
+          <tr><td><code>display($js)</code> · <code>input($js)</code><span class="tag">jTable</span></td><td>Función JavaScript para pintar la celda o el control del formulario.</td></tr>
+          <tr><td><code>jtable([...])</code><span class="tag">jTable</span></td><td>Cualquier <a href="http://www.jtable.org/ApiReference/FieldOptions" target="_blank" rel="noopener">opción de campo de jTable</a>, tal cual.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="validacion" data-search="validación reglas rules required minlength maxlength numeric integer min max pattern in">
+      <h2>Validación</h2>
+      <p>Las reglas se declaran una vez y se aplican en el navegador (antes de enviar) y en el servidor (siempre). Un error se muestra junto al campo.</p>
+      <div class="code" data-lang="php"><div class="label">ejemplo</div><pre>Field::text('placa', 'Placa')-&gt;rules(array(
+  'required'  =&gt; true,
+  'maxLength' =&gt; 6,
+  'pattern'   =&gt; '^[A-Z]{3}[0-9]{3}$',
+)),
+Field::number('capacidad', 'Capacidad (m³)')-&gt;rules(array('min' =&gt; 0, 'max' =&gt; 90)),
+Field::text('tramo', 'Tramo')-&gt;rules(array('in' =&gt; array('T1', 'T2')))</pre></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Regla</th><th>Valor</th><th>Mensaje por defecto</th></tr></thead>
+        <tbody>
+          <tr><td><code>required</code></td><td><code>true</code></td><td>Este campo es obligatorio.</td></tr>
+          <tr><td><code>minLength</code> · <code>maxLength</code></td><td>número</td><td>Escriba al menos / máximo {value} caracteres.</td></tr>
+          <tr><td><code>numeric</code> · <code>integer</code></td><td><code>true</code></td><td>Escriba un número / un número entero.</td></tr>
+          <tr><td><code>min</code> · <code>max</code></td><td>número</td><td>El valor mínimo / máximo es {value}.</td></tr>
+          <tr><td><code>pattern</code></td><td>expresión regular</td><td>El formato no es válido.</td></tr>
+          <tr><td><code>in</code></td><td>arreglo de valores</td><td>Elija uno de los valores permitidos.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Para reglas que dependen de la base de datos (por ejemplo, "no repetir un municipio"), usa <code>beforeSave()</code> o confía en la restricción de la tabla: una clave duplicada se convierte en el mensaje <code>duplicateKey</code>, que puedes personalizar con <a href="#textos"><code>texts()</code></a>.</p>
+    </section>
+
+    <section id="autocomplete" data-search="autocomplete lookup buscador table query suggestonly texto código __text">
+      <h2>Autocompletar (Lookup)</h2>
+      <p>Un campo <code>autocomplete</code> guarda un código y muestra un texto. El <code>Lookup</code> dice de dónde salen.</p>
+      <div class="code" data-lang="php"><div class="label">dos formas de declararlo</div><pre>use Ivandzb\CrudKit\Definition\Lookup;
+
+// 1) Una tabla: columna del código y columna del texto
+$sectores = Lookup::table("{$GLOBALS['dbnameMIntranet']}.maestros.sectordespacho", 'idsector', 'Descripcion')
+  -&gt;suggestOnly('Activo = 1');   // el buscador solo ofrece activos; el listado muestra todos
+
+// 2) Una consulta con columnas id y text
+$municipios = Lookup::query("
+  SELECT t013.f013_id_pais + t013.f013_id_depto + t013.f013_id AS id,
+         RTRIM(t012.f012_descripcion) + ' ' + RTRIM(t013.f013_descripcion) AS text
+  FROM SiesaEnterprise.dbo.t012_mm_deptos t012
+  INNER JOIN SiesaEnterprise.dbo.t013_mm_ciudades t013
+    ON t013.f013_id_pais = t012.f012_id_pais AND t013.f013_id_depto = t012.f012_id
+");
+
+Field::autocomplete('CS_id_sector', 'Sector', $sectores)-&gt;filterable()-&gt;rules(array('required' =&gt; true))</pre></div>
+      <ul>
+        <li>El listado une el lookup y cada registro trae el texto en <code>&lt;campo&gt;__text</code>; la columna se ordena por el texto.</li>
+        <li>El buscador busca cada palabra escrita (todas deben aparecer en el texto).</li>
+        <li>Con un repositorio propio, devuelve tú el texto en <code>&lt;campo&gt;__text</code> (ver Viajes v2, campo <code>estado</code>).</li>
+      </ul>
+    </section>
+
+    <section id="opciones" data-search="opciones crud title table fields pagesize defaultsorting loadonfilteronly readonly disable selectable borrado masivo jtable on eventos">
+      <h2>Opciones del CRUD</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Método</th><th>Qué hace</th></tr></thead>
+        <tbody>
+          <tr><td><code>Crud::make('id')</code></td><td>Crea la definición. El id viaja en cada petición (<code>crud=id</code>); usa letras, números y guiones.</td></tr>
+          <tr><td><code>title('…')</code></td><td>Título de la tabla.</td></tr>
+          <tr><td><code>table('base.esquema.tabla')</code></td><td>Tabla de la que lee y en la que escribe (si no usas <code>dataSource()</code>).</td></tr>
+          <tr><td><code>fields(...)</code></td><td>Los campos, en el orden de las columnas.</td></tr>
+          <tr><td><code>pageSize(25)</code></td><td>Registros por página.</td></tr>
+          <tr><td><code>defaultSorting('campo', 'DESC')</code></td><td>Orden inicial.</td></tr>
+          <tr><td><code>loadOnFilterOnly()</code></td><td>No carga al abrir; espera a que el usuario pulse Filtrar (tablas grandes).</td></tr>
+          <tr><td><code>readOnly()</code></td><td>Solo consulta: sin crear, editar ni eliminar.</td></tr>
+          <tr><td><code>disable('delete')</code></td><td>Apaga una operación: no hay botón y el servidor la rechaza.</td></tr>
+          <tr><td><code>selectable()</code></td><td>Casillas de selección y botón "Borrar selección" (borrado masivo).</td></tr>
+          <tr><td><code>permissions([...])</code></td><td>Código de permiso por operación; ver <a href="#permisos">Permisos</a>.</td></tr>
+          <tr><td><code>messages([...])</code> · <code>texts([...])</code></td><td>Textos propios de esta pantalla; ver <a href="#textos">Textos</a>.</td></tr>
+          <tr><td><code>child(...)</code></td><td>Tabla hija; ver <a href="#hijas">Tablas hijas</a>.</td></tr>
+          <tr><td><code>dataSource($repo)</code></td><td>Datos desde tu repositorio; ver <a href="#fuente">Repositorio</a>.</td></tr>
+          <tr><td><code>beforeSave</code> · <code>afterSave</code> · <code>transform</code> · <code>action</code></td><td>Ganchos; ver <a href="#ganchos">Ganchos</a>.</td></tr>
+          <tr><td><code>renderWith('quasar')</code></td><td>Tecnología de esta pantalla; ver <a href="#render">Renderizado</a>.</td></tr>
+          <tr><td><code>jtable([...])</code><span class="tag">jTable</span></td><td>Cualquier <a href="http://www.jtable.org/ApiReference/GeneralOptions" target="_blank" rel="noopener">opción general de jTable</a>, p. ej. <code>['openChildAsAccordion' =&gt; true]</code>.</td></tr>
+          <tr><td><code>on('recordsLoaded', $js)</code><span class="tag">jTable</span></td><td>Cuerpo JavaScript para un evento de jTable; recibe <code>(event, data)</code>.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="permisos" data-search="permisos acceso i m c e insertar modificar consultar eliminar seguridad">
+      <h2>Permisos I / M / C / E</h2>
+      <p>En la intranet, los permisos salen de la opción de menú (<code>$acceso</code>): <b>I</b> insertar, <b>M</b> modificar, <b>C</b> consultar, <b>E</b> eliminar. Cada CRUD dice qué código exige cada operación:</p>
+      <div class="code" data-lang="php"><div class="label">ejemplo</div><pre>-&gt;permissions(array('create' =&gt; 'I', 'update' =&gt; 'M', 'delete' =&gt; 'E'))</pre></div>
+      <ul>
+        <li>Una operación <strong>sin código</strong> queda permitida (si está habilitada). Sectores v2 solo exige <code>E</code> para eliminar.</li>
+        <li>Sin el permiso, el botón no se pinta <strong>y</strong> el servidor rechaza la petición: no basta con esconder el botón.</li>
+        <li>Las tablas hijas tienen sus propios permisos.</li>
+      </ul>
+    </section>
+
+    <section id="textos" data-search="textos mensajes messages texts loadingmessage duplicatekey idioma traducción">
+      <h2>Textos y mensajes</h2>
+      <p>Los textos vienen en español (<code>packages/crud-kit/lang/es.php</code>). Para una pantalla puedes cambiar los que quieras:</p>
+      <div class="code" data-lang="php"><div class="label">ejemplo</div><pre>-&gt;messages(array('loadingMessage' =&gt; 'Cargando municipios...'))                 // textos de la tabla
+-&gt;texts(array('duplicateKey' =&gt; 'Ese municipio ya tiene un sector asignado.'))  // textos del framework</pre></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Con</th><th>Claves útiles</th></tr></thead>
+        <tbody>
+          <tr><td><code>messages()</code></td><td><code>loadingMessage</code>, <code>noDataAvailable</code>, <code>addNewRecord</code>, <code>editRecord</code>, <code>deleteConfirmation</code>, <code>serverCommunicationError</code></td></tr>
+          <tr><td><code>texts()</code></td><td><code>duplicateKey</code>, <code>recordInUse</code>, <code>validationFailed</code>, <code>deleteSelected</code>, <code>deleteSelectedConfirm</code>, <code>filter</code>, <code>rule.required</code> y demás <code>rule.*</code></td></tr>
+        </tbody>
+      </table></div>
+      <p>Para otro idioma, copia <code>lang/es.php</code> con la sigla que corresponda y cambia <code>CrudKitIntranet::IDIOMA</code>.</p>
+    </section>
+
+    <section id="hijas" data-search="tablas hijas child submantenimiento detalle acordeón links">
+      <h2>Tablas hijas (submantenimientos)</h2>
+      <p>Una tabla hija es otro <code>Crud</code> que se abre debajo de la fila. Los campos enlazados filtran la hija y quedan ocultos en ella.</p>
+      <div class="code" data-lang="php"><div class="label">extracto de modulos/logistica/ListaPickingViajesV2.php</div><pre>$listas = Crud::make('viajes-listas')
+  -&gt;title('Estados de las listas de despacho')
+  -&gt;readOnly()
+  -&gt;dataSource(new ViajesV2ListasFuente(new LogisticaListaPickingViajesListasDespachoRepository($db)))
+  -&gt;fields(
+    Field::number('lista_despacho', 'Lista de despacho')-&gt;key(),
+    Field::number('viaje', 'Viaje'),
+    Field::text('estado', 'Estado')
+  );
+
+return Crud::make('viajes')
+  -&gt;fields(Field::number('viaje', 'Viaje')-&gt;key()-&gt;filterable(), /* ... */)
+  //        nombre             título                 crud     hija =&gt; padre        ícono
+  -&gt;child('listas_despacho', 'Listas de despacho', $listas, array('viaje' =&gt; 'viaje'), 'fas fa-clipboard-list')
+  -&gt;jtable(array('openChildAsAccordion' =&gt; true));   // una hija abierta a la vez</pre></div>
+      <ul>
+        <li>Cada fila tiene un botón por hija, en las primeras columnas (después de la casilla de selección si la hay).</li>
+        <li>La hija se sirve por la misma URL con <code>crud=viajes-listas</code>; puede tener sus propias hijas.</li>
+        <li>El ícono es una clase de Font Awesome (<code>fas fa-…</code>), que la intranet ya carga.</li>
+      </ul>
+    </section>
+
+    <section id="fuente" data-search="repositorio datasource readonlydatasource listquery fuente de datos procedimiento sp">
+      <h2>Datos desde un repositorio</h2>
+      <p>Cuando los datos salen de un procedimiento almacenado o de un repositorio existente, implementa <code>DataSource</code>. Si solo se consulta, extiende <code>ReadOnlyDataSource</code> y escribe solo <code>list()</code>.</p>
+      <div class="code" data-lang="php"><div class="label">ejemplo de solo lectura</div><pre>use Ivandzb\CrudKit\Data\ListQuery;
+use Ivandzb\CrudKit\Data\ReadOnlyDataSource;
+
+class ViajesV2ListasFuente extends ReadOnlyDataSource
+{
+  private $repositorio;
+
+  public function __construct(LogisticaListaPickingViajesListasDespachoRepository $repositorio)
+  {
+    $this-&gt;repositorio = $repositorio;
+  }
+
+  public function list(ListQuery $query)
+  {
+    $viaje = (int) $query-&gt;filter('viaje');        // filtro o campo enlazado del padre
+    $resultado = $this-&gt;repositorio-&gt;listarPorViaje($viaje, (int) $query-&gt;offset(), $query-&gt;limit() ?: 10);
+    return array('total' =&gt; $resultado['total'], 'records' =&gt; $resultado['registros']);
+  }
+}</pre></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>ListQuery</th><th>Devuelve</th></tr></thead>
+        <tbody>
+          <tr><td><code>filters()</code> · <code>filter('campo')</code></td><td>Filtros ya validados (incluye los enlaces de una tabla hija).</td></tr>
+          <tr><td><code>sorting()</code></td><td>Orden pedido, solo sobre campos declarados.</td></tr>
+          <tr><td><code>offset()</code> · <code>limit()</code> · <code>isPaged()</code></td><td>Paginación.</td></tr>
+          <tr><td><code>params()</code> · <code>param('x')</code></td><td>Parámetros crudos de la petición, para repositorios que ya los leen así.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Para escribir, implementa también <code>create(array $valores)</code>, <code>update(array $valores)</code> (devuelven el registro grabado) y <code>delete(array $claves)</code>. Los valores llegan ya validados.</p>
+      <div class="warn"><strong>Recuerda</strong>Dentro del repositorio, todo valor que llegue a SQL va con <code>sql_query_params</code>. Nunca interpoles filtros del usuario.</div>
+    </section>
+
+    <section id="ganchos" data-search="ganchos beforesave aftersave transform action validationexception reglas de negocio">
+      <h2>Ganchos y acciones propias</h2>
+      <div class="code" data-lang="php"><div class="label">ejemplo</div><pre>use Ivandzb\CrudKit\Server\ValidationException;
+
+Crud::make('vehiculos')
+  // Antes de crear, modificar o eliminar: lanza una excepción para cancelar.
+  -&gt;beforeSave(function (array $registro, $operacion) {
+    if ($operacion === 'create' &amp;&amp; $registro['capacidad'] &gt; 90) {
+      throw new ValidationException(array('capacidad' =&gt; 'Un camión no supera 90 m³.'));
+    }
+  })
+  // Después de grabar (bitácora, avisos...).
+  -&gt;afterSave(function (array $registro, $operacion) { /* ... */ })
+  // Cada registro antes de enviarlo al navegador.
+  -&gt;transform(function (array $registro) {
+    $registro['capacidad'] = number_format((float) $registro['capacidad'], 2, '.', '');
+    return $registro;
+  })
+  // Acción propia: &amp;crud=vehiculos&amp;action=recalcular
+  -&gt;action('recalcular', function (array $params, Crud $crud) {
+    return array('Result' =&gt; 'OK');
+  });</pre></div>
+      <p>El mensaje de la excepción llega al usuario. Con <code>ValidationException</code> el error se marca en el campo.</p>
+    </section>
+
+    <section id="render" data-search="renderizado jtable quasar vue 3 render renderwith renderizador">
+      <h2>jTable o Vue 3 + Quasar</h2>
+      <p>La misma definición se pinta con jTable 2.4 o con Vue 3 + Quasar. Los datos, permisos y validaciones son los mismos.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Dónde</th><th>Cómo</th><th>Alcance</th></tr></thead>
+        <tbody>
+          <tr><td><code>CrudKitIntranet::RENDERIZADOR</code></td><td><code>'jtable'</code> o <code>'quasar'</code></td><td>todos los CRUD de la intranet</td></tr>
+          <tr><td>En la definición</td><td><code>-&gt;renderWith('quasar')</code></td><td>esa pantalla (gana sobre la constante)</td></tr>
+          <tr><td>En la URL</td><td><code>&amp;render=quasar</code></td><td>solo esa carga, para comparar</td></tr>
+        </tbody>
+      </table></div>
+      <ul>
+        <li><code>jtable()</code>, <code>on()</code>, <code>display()</code> e <code>input()</code> solo aplican en jTable; Quasar los ignora.</li>
+        <li>Quasar trae su propio Vue 3 dentro de <code>assets/quasar/crud-kit-quasar.js</code> y no choca con Vue 2, jQuery ni Bootstrap de la página.</li>
+        <li>Si cambias el componente Quasar: <code>cd packages/crud-kit/quasar &amp;&amp; npm run build &amp;&amp; npm test</code>.</li>
+      </ul>
+    </section>
+
+    <section id="protocolo" data-search="protocolo json respuesta result records totalrecordcount error message errors peticiones">
+      <h2>Protocolo con el servidor</h2>
+      <p>Útil para depurar en la pestaña Red del navegador.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Petición</th><th>Respuesta</th></tr></thead>
+        <tbody>
+          <tr><td><code>&amp;crud=id&amp;action=list</code> + <code>jtStartIndex</code>, <code>jtPageSize</code>, <code>jtSorting</code>, filtros</td><td><code>{"Result":"OK","Records":[…],"TotalRecordCount":n}</code></td></tr>
+          <tr><td><code>action=create</code> · <code>update</code></td><td><code>{"Result":"OK","Record":{…}}</code></td></tr>
+          <tr><td><code>action=delete</code></td><td><code>{"Result":"OK"}</code></td></tr>
+          <tr><td><code>action=autocomplete&amp;field=campo&amp;term=texto</code></td><td><code>[{"id":…,"label":…}]</code></td></tr>
+          <tr><td>cualquier error</td><td><code>{"Result":"ERROR","Message":"…","Errors":{"campo":"…"}}</code></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="ejemplos" data-search="ejemplos intranet sectores municipios viajes picking">
+      <h2>Ejemplos en la intranet</h2>
+      <div class="grid2">
+        <div class="card"><h3>Sectores v2</h3><p>Tabla simple: clave digitada, lista desplegable, permiso de eliminar.</p><p><code>modulos/logistica/SectoresV2.php</code></p></div>
+        <div class="card"><h3>Sectores y municipios v2</h3><p>Dos autocompletar (tabla y consulta a Siesa), <code>suggestOnly</code>, selección múltiple y mensaje de clave duplicada.</p><p><code>modulos/logistica/SectoresyMunicipiosV2.php</code></p></div>
+        <div class="card"><h3>Viajes v2</h3><p>Solo lectura desde repositorios, filtros por contenido, dos tablas hijas, campo <code>html()</code> y <code>transform()</code>.</p><p><code>modulos/logistica/ListaPickingViajesV2.php</code></p></div>
+      </div>
+      <p>Las tres están en el menú de picking (<em>Logística → Lista de picking</em>) junto a su versión v1, para comparar.</p>
+    </section>
+
+    <section id="problemas" data-search="problemas frecuentes error al conectar con el servidor bom config salto de línea vacío invalid table">
+      <h2>Problemas frecuentes</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Síntoma</th><th>Causa probable</th><th>Qué hacer</th></tr></thead>
+        <tbody>
+          <tr><td>"Error al conectar con el servidor."</td><td>La respuesta no es JSON puro: algo imprimió antes (BOM, espacios o texto en <code>config.php</code> o un include).</td><td>Abre la petición en la pestaña Red y mira el inicio de la respuesta.</td></tr>
+          <tr><td><code>Invalid table name: '.maestros…'</code></td><td><code>$GLOBALS['dbnameMIntranet']</code> vacío cuando se construye la definición.</td><td>Construye el CRUD dentro de la función que llama el menú, no al cargar el archivo.</td></tr>
+          <tr><td>La pantalla se pinta pero los datos no llegan</td><td>La URL de <code>pantalla()</code> no es la de la opción de menú.</td><td>Usa la misma <code>nombreOpcion</code> con <code>rawurlencode()</code>.</td></tr>
+          <tr><td>No aparece el botón Adicionar / Eliminar</td><td>Falta el permiso I / E en la opción, o la operación está deshabilitada.</td><td>Revisa <code>permissions()</code>, <code>readOnly()</code> y <code>disable()</code>.</td></tr>
+          <tr><td>Respuesta vacía con código 200 y lentitud</td><td>Xdebug con <code>start_with_request=yes</code> corta la respuesta.</td><td>Reproduce por consola con <code>XDEBUG_MODE=off</code> antes de culpar al código.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="v1" data-search="v1 framework anterior mantenimiento_jtable migrar diferencias">
+      <h2>crud-kit frente al framework v1</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th></th><th>v1 · <code>Mantenimiento_JTable</code></th><th>v2 · crud-kit</th></tr></thead>
+        <tbody>
+          <tr><td>Forma</td><td>Clase que hereda y sobreescribe métodos</td><td>Definición declarativa con métodos encadenados</td></tr>
+          <tr><td>Validación</td><td>Manual</td><td>Reglas únicas en navegador y servidor</td></tr>
+          <tr><td>SQL</td><td>Escapado por motor</td><td>Siempre parametrizado</td></tr>
+          <tr><td>Tecnología</td><td>jTable</td><td>jTable o Vue 3 + Quasar</td></tr>
+          <tr><td>Reutilizable</td><td>Solo en la intranet</td><td>Paquete independiente (<code>ivandzb/crud-kit</code>)</td></tr>
+        </tbody>
+      </table></div>
+      <p>Los 97 módulos v1 siguen funcionando igual. Un módulo se pasa a v2 solo cuando se vaya a tocar.</p>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  // Resaltado sencillo de PHP para los bloques de código.
+  var KEYWORDS = /\b(function|return|new|use|class|extends|public|private|if|else|throw|array|require_once|case|break|true|false|null)\b/g;
+  function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function highlight(code) {
+    var out = '';
+    var re = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|(\$[A-Za-z_][A-Za-z0-9_]*)|(\b[A-Za-z_][A-Za-z0-9_]*(?=\())/g;
+    var last = 0, m;
+    while ((m = re.exec(code))) {
+      out += escapeHtml(code.slice(last, m.index)).replace(KEYWORDS, '<span class="tk-k">$1</span>');
+      var cls = m[1] ? 'tk-c' : m[2] ? 'tk-s' : m[3] ? 'tk-v' : 'tk-f';
+      if (cls === 'tk-f' && /^(function|array|if|return|isset|new)$/.test(m[0])) cls = 'tk-k';
+      out += '<span class="' + cls + '">' + escapeHtml(m[0]) + '</span>';
+      last = re.lastIndex;
+    }
+    return out + escapeHtml(code.slice(last)).replace(KEYWORDS, '<span class="tk-k">$1</span>');
+  }
+  document.querySelectorAll('.code').forEach(function (block) {
+    var pre = block.querySelector('pre');
+    var source = pre.textContent;
+    pre.innerHTML = highlight(source);
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'copy';
+    button.textContent = 'Copiar';
+    button.addEventListener('click', function () {
+      var done = function () { button.textContent = 'Copiado'; setTimeout(function () { button.textContent = 'Copiar'; }, 1500); };
+      var fallback = function () {
+        var range = document.createRange();
+        range.selectNodeContents(pre);
+        var sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        button.textContent = 'Seleccionado: Ctrl+C';
+      };
+      try {
+        navigator.clipboard.writeText(source).then(done, fallback);
+      } catch (e) { fallback(); }
+    });
+    block.appendChild(button);
+  });
+
+  // Índice: resalta la sección visible.
+  var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+  var sections = links.map(function (a) { return document.querySelector(a.getAttribute('href')); });
+  function markActive() {
+    var current = sections[0];
+    sections.forEach(function (s) { if (s && !s.classList.contains('hidden-by-search') && s.getBoundingClientRect().top < 120) current = s; });
+    links.forEach(function (a) { a.classList.toggle('active', current && a.getAttribute('href') === '#' + current.id); });
+  }
+  window.addEventListener('scroll', markActive, { passive: true });
+  markActive();
+
+  // Búsqueda: deja solo las secciones que contienen todas las palabras.
+  var search = document.getElementById('buscar');
+  search.addEventListener('input', function () {
+    var words = search.value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').split(/\s+/).filter(Boolean);
+    sections.forEach(function (s, i) {
+      if (!s) return;
+      var text = (s.getAttribute('data-search') + ' ' + s.textContent).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+      var match = words.every(function (w) { return text.indexOf(w) !== -1; });
+      s.classList.toggle('hidden-by-search', !match);
+      links[i].hidden = !match;
+    });
+    markActive();
+  });
+
+  // Índice desplegable en pantallas angostas.
+  var toggle = document.getElementById('menu-toggle');
+  var toc = document.getElementById('toc');
+  toggle.addEventListener('click', function () {
+    var open = toc.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
+  links.forEach(function (a) { a.addEventListener('click', function () { toc.classList.remove('open'); toggle.setAttribute('aria-expanded', 'false'); }); });
+})();
+</script>
+
+</body></html>

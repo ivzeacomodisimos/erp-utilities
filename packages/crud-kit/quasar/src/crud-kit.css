@@ -1,0 +1,116 @@
+/* crud-kit Quasar renderer: same corporate blue as the jTable theme (#3d6ea6 / #2a5080). */
+
+:root {
+  --q-primary: #3d6ea6;
+}
+
+/* Quasar icon names (q-icon name="local_shipping"): the font is copied next to this file. */
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src: url('./material-icons.woff2') format('woff2');
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: 'liga';
+}
+
+/* The CRUD takes the width it is given and never imposes its own: a wide table scrolls
+   inside instead of stretching the host page (e.g. a layout <td> sized by its content). */
+.ck-crud-quasar {
+  contain: inline-size;
+}
+
+.ck-crud-quasar .ck-q-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 10px;
+}
+
+/* Fixed width: all filters line up, and the search spinner does not make one grow. */
+.ck-crud-quasar .ck-q-filter {
+  flex: 0 0 200px;
+  width: 200px;
+}
+
+.ck-crud-quasar .ck-q-table .q-table__top {
+  background: linear-gradient(to bottom, #4a7fbc 0%, #2f5e93 100%);
+  color: #fff;
+  border-radius: 3px 3px 0 0;
+}
+
+.ck-crud-quasar .ck-q-table .q-table__top .q-btn--outline {
+  color: #fff;
+}
+
+.ck-crud-quasar .ck-q-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ck-crud-quasar .ck-q-table thead tr th {
+  background: #3d6ea6;
+  color: #fff;
+  font-weight: 600;
+}
+
+.ck-crud-quasar .ck-q-table tbody tr:nth-child(even) {
+  background: #f6f9fc;
+}
+
+.ck-crud-quasar .ck-q-child-row > td {
+  background: #edf2f8;
+  padding: 8px 8px 8px 24px;
+}
+
+.ck-crud-quasar .ck-q-child-panel {
+  position: sticky;
+  left: 24px;
+  max-width: 100%;
+}
+
+.ck-crud-quasar .ck-q-child-button {
+  color: #2a5080;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.ck-crud-quasar .ck-q-child-button .ck-host-icon,
+.ck-crud-quasar .ck-q-child-button .q-icon {
+  font-size: 18px;
+}
+
+.ck-crud-quasar .ck-q-child-open {
+  background: #d6e2f1;
+}
+
+.ck-q-form-card {
+  min-width: 420px;
+  max-width: 90vw;
+}
+
+.ck-q-dialog-title {
+  background: #3d6ea6;
+  color: #fff;
+  font-weight: 600;
+}
+
+.ck-q-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
