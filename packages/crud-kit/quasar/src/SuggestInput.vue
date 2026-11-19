@@ -45,6 +45,7 @@ import { post } from './api';
 const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
   url: { type: String, required: true },
+  requestParams: { type: Object, default: () => ({}) },
   label: { type: String, default: '' },
   dense: { type: Boolean, default: false },
   outlined: { type: Boolean, default: false },
@@ -70,7 +71,7 @@ async function search(term, update, abort) {
     return;
   }
   try {
-    const items = await post(props.url, { term }, props.communicationError);
+    const items = await post(props.url, { ...props.requestParams, term }, props.communicationError);
     update(() => {
       // Values can repeat (one suggestion per record): the position is the option key.
       options.value = items.map((item, index) => ({ key: index, value: item.value, label: item.label, caption: item.caption || '' }));

@@ -2,8 +2,9 @@
 
 use App\Http\Middleware\AuthenticateJwt;
 use App\Http\Middleware\EnsureMenuEnabled;
-use App\Http\Middleware\RequirePermission;
+use App\Http\Middleware\LoadManagedApplicationRoutes;
 use App\Http\Middleware\RequireOptionPermission;
+use App\Http\Middleware\RequirePermission;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->prepend(LoadManagedApplicationRoutes::class);
         $middleware->alias(['erp.jwt' => AuthenticateJwt::class, 'erp.permission' => RequirePermission::class, 'erp.menu' => EnsureMenuEnabled::class, 'erp.option' => RequireOptionPermission::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

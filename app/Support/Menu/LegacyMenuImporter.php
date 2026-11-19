@@ -95,6 +95,8 @@ class LegacyMenuImporter
                     'legacy_url' => trim((string) $source['URL']), 'sort_order' => (string) $source['ORDEN'],
                     'active' => $source['ACTIVADO'] === 'S', 'is_public' => (int) $source['PUBLICA'] === 1,
                     'description' => $source['DESDETALLE'] ?? null,
+                    'icon' => $source['IMAGENICONO'] ?? '',
+                    'append_legacy_id' => (int) ($source['INDICADOR_CONCATENAR_ID'] ?? 1) === 1,
                     'revision' => $old ? $old->revision + 1 : 1, 'updated_at' => $timestamp,
                 ];
                 if ($old) {

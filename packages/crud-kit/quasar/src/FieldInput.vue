@@ -6,6 +6,8 @@
     :initial-text="initialText"
     :url="field.autocompleteUrl"
     :request-params="requestParams"
+    :dependency-context="dependencyContext"
+    :dependency-ready="dependencyReady"
     :label="field.title"
     :rules="rules"
     :error="!!error"
@@ -81,6 +83,7 @@ import { QInput, QSelect, QToggle, QIcon, QPopupProxy, QDate } from 'quasar';
 import { matEvent } from '@quasar/extras/material-icons';
 import LookupSelect from './LookupSelect.vue';
 import { quasarRules } from './rules';
+import { lookupContext, dependenciesReady } from './lookupDependencies';
 
 /**
  * Form input of a field, by type.
@@ -93,16 +96,24 @@ const props = defineProps({
   error: { type: String, default: '' },
   readonly: { type: Boolean, default: false },
   requestParams: { type: Object, default: () => ({}) },
+  formValues: { type: Object, default: () => ({}) },
+  allFields: { type: Array, default: () => [] },
 });
 const emit = defineEmits(['update:modelValue']);
 
 const calendarIcon = matEvent;
+const dependencyContext = computed(() => lookupContext(props.field, props.allFields, props.formValues));
+const dependencyReady = computed(() => dependenciesReady(dependencyContext.value));
 const rules = computed(() => quasarRules(props.field.rules, props.texts));
 const inputType = computed(() => ({ textarea: 'textarea', password: 'password' }[props.field.type] || 'text'));
 // The record may bring "1" (SQL Server returns strings) while the options say 1: Quasar
 // compares with ===, so both sides are compared as strings or it shows the raw value.
 const selectOptions = computed(() => (props.field.options || []).map((option) => ({ value: String(option.value), label: option.label })));
-const selectValue = computed(() => (props.modelValue === null || props.modelValue === undefined || props.modelValue === '' ? null : String(props.modelValue)));
+const selectValue = computed(() => {
+  if (props.modelValue === null || props.modelValue === undefined) return null;
+  if (props.modelValue === '' && !selectOptions.value.some(option => option.value === '')) return null;
+  return String(props.modelValue);
+});
 
 const uncheckedValue = computed(() => (props.field.options && props.field.options[0] ? props.field.options[0].value : 0));
 const checkedValue = computed(() => (props.field.options && props.field.options[1] ? props.field.options[1].value : 1));

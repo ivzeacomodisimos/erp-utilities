@@ -21065,6 +21065,14 @@ Expected function or array of functions, received type ${typeof value}.`);
 			requestParams: {
 				type: Object,
 				default: () => ({})
+			},
+			dependencyContext: {
+				type: Object,
+				default: null
+			},
+			dependencyReady: {
+				type: Boolean,
+				default: true
 			}
 		},
 		emits: ["update:modelValue"],
@@ -21080,6 +21088,19 @@ Expected function or array of functions, received type ${typeof value}.`);
 				}] : [];
 			}
 			const options = /* @__PURE__ */ ref(initialOptions());
+			const contextKey = computed(() => JSON.stringify(props.dependencyContext));
+			let generation = 0;
+			let pendingAbort = null;
+			watch(contextKey, () => {
+				generation++;
+				if (pendingAbort) pendingAbort();
+				pendingAbort = null;
+				selectedText.value = "";
+				options.value = [];
+			});
+			onBeforeUnmount(() => {
+				generation++;
+			});
 			watch(() => props.initialText, (text) => {
 				selectedText.value = text;
 				options.value = initialOptions();
@@ -21090,6 +21111,15 @@ Expected function or array of functions, received type ${typeof value}.`);
 				emit("update:modelValue", value === null ? "" : value);
 			}
 			async function search(term, update, abort) {
+				const version = ++generation;
+				const context = contextKey.value;
+				pendingAbort = abort;
+				if (!props.dependencyReady) {
+					update(() => {
+						options.value = [];
+					});
+					return;
+				}
 				if (!term) {
 					update(() => {
 						options.value = initialOptions();
@@ -21097,10 +21127,14 @@ Expected function or array of functions, received type ${typeof value}.`);
 					return;
 				}
 				try {
-					const items = await post(props.url, {
+					const params = {
 						...props.requestParams,
 						term
-					}, props.communicationError);
+					};
+					if (props.dependencyContext) params.lookup_context = context;
+					const items = await post(props.url, params, props.communicationError);
+					if (version !== generation || context !== contextKey.value) return;
+					pendingAbort = null;
 					update(() => {
 						options.value = items.map((item) => ({
 							value: item.id,
@@ -21109,7 +21143,10 @@ Expected function or array of functions, received type ${typeof value}.`);
 						}));
 					});
 				} catch (e) {
-					abort();
+					if (version === generation && context === contextKey.value) {
+						pendingAbort = null;
+						abort();
+					}
 				}
 			}
 			const __returned__ = {
@@ -21118,8 +21155,23 @@ Expected function or array of functions, received type ${typeof value}.`);
 				selectedText,
 				initialOptions,
 				options,
+				contextKey,
+				get generation() {
+					return generation;
+				},
+				set generation(v) {
+					generation = v;
+				},
+				get pendingAbort() {
+					return pendingAbort;
+				},
+				set pendingAbort(v) {
+					pendingAbort = v;
+				},
 				select,
 				search,
+				computed,
+				onBeforeUnmount,
 				ref,
 				watch,
 				get QSelect() {
@@ -21150,6 +21202,7 @@ Expected function or array of functions, received type ${typeof value}.`);
 	};
 	function _sfc_render$3(_ctx, _cache, $props, $setup, $data, $options) {
 		return openBlock(), createBlock($setup["QSelect"], {
+			key: $setup.contextKey,
 			"model-value": $props.modelValue,
 			options: $setup.options,
 			label: $props.label,
@@ -21158,6 +21211,7 @@ Expected function or array of functions, received type ${typeof value}.`);
 			"error-message": $props.errorMessage,
 			dense: $props.dense,
 			outlined: $props.outlined,
+			disable: !$props.dependencyReady,
 			"use-input": "",
 			"input-debounce": "300",
 			"emit-value": "",
@@ -21204,7 +21258,8 @@ Expected function or array of functions, received type ${typeof value}.`);
 			"error",
 			"error-message",
 			"dense",
-			"outlined"
+			"outlined",
+			"disable"
 		]);
 	}
 	var LookupSelect_default = /*#__PURE__*/ _plugin_vue_export_helper_default(_sfc_main$3, [["render", _sfc_render$3], ["__file", "LookupSelect.vue"]]);
@@ -21240,6 +21295,35 @@ Expected function or array of functions, received type ${typeof value}.`);
 	*/
 	function quasarRules(rules, texts) {
 		return [(value) => ruleError(rules || {}, value, texts) || true];
+	}
+	//#endregion
+	//#region src/lookupDependencies.js
+	function lookupContext(field, fields, values) {
+		if (!field.dependsOn) return null;
+		const context = Object.create(null), visited = /* @__PURE__ */ new Set([field.name]);
+		let parent = field.dependsOn;
+		while (parent && !visited.has(parent)) {
+			visited.add(parent);
+			context[parent] = values[parent] ?? null;
+			parent = fields.find((item) => item.name === parent)?.dependsOn;
+		}
+		return context;
+	}
+	function dependenciesReady(context) {
+		return !context || Object.values(context).every((value) => value !== "" && value !== null && value !== void 0);
+	}
+	function clearDependentValues(name, fields, values) {
+		const cleared = [], visited = /* @__PURE__ */ new Set([name]);
+		function clear(parent) {
+			for (const field of fields) if (field.dependsOn === parent && !visited.has(field.name)) {
+				visited.add(field.name);
+				values[field.name] = "";
+				cleared.push(field.name);
+				clear(field.name);
+			}
+		}
+		clear(name);
+		return cleared;
 	}
 	//#endregion
 	//#region src/FieldInput.vue
@@ -21280,6 +21364,14 @@ Expected function or array of functions, received type ${typeof value}.`);
 			requestParams: {
 				type: Object,
 				default: () => ({})
+			},
+			formValues: {
+				type: Object,
+				default: () => ({})
+			},
+			allFields: {
+				type: Array,
+				default: () => []
 			}
 		},
 		emits: ["update:modelValue"],
@@ -21288,6 +21380,8 @@ Expected function or array of functions, received type ${typeof value}.`);
 			const props = __props;
 			const emit = __emit;
 			const calendarIcon = matEvent;
+			const dependencyContext = computed(() => lookupContext(props.field, props.allFields, props.formValues));
+			const dependencyReady = computed(() => dependenciesReady(dependencyContext.value));
 			const rules = computed(() => quasarRules(props.field.rules, props.texts));
 			const inputType = computed(() => ({
 				textarea: "textarea",
@@ -21297,7 +21391,11 @@ Expected function or array of functions, received type ${typeof value}.`);
 				value: String(option.value),
 				label: option.label
 			})));
-			const selectValue = computed(() => props.modelValue === null || props.modelValue === void 0 || props.modelValue === "" ? null : String(props.modelValue));
+			const selectValue = computed(() => {
+				if (props.modelValue === null || props.modelValue === void 0) return null;
+				if (props.modelValue === "" && !selectOptions.value.some((option) => option.value === "")) return null;
+				return String(props.modelValue);
+			});
 			const uncheckedValue = computed(() => props.field.options && props.field.options[0] ? props.field.options[0].value : 0);
 			const checkedValue = computed(() => props.field.options && props.field.options[1] ? props.field.options[1].value : 1);
 			function update(value) {
@@ -21307,6 +21405,8 @@ Expected function or array of functions, received type ${typeof value}.`);
 				props,
 				emit,
 				calendarIcon,
+				dependencyContext,
+				dependencyReady,
 				rules,
 				inputType,
 				selectOptions,
@@ -21339,6 +21439,12 @@ Expected function or array of functions, received type ${typeof value}.`);
 				LookupSelect: LookupSelect_default,
 				get quasarRules() {
 					return quasarRules;
+				},
+				get lookupContext() {
+					return lookupContext;
+				},
+				get dependenciesReady() {
+					return dependenciesReady;
 				}
 			};
 			Object.defineProperty(__returned__, "__isScriptSetup", {
@@ -21356,6 +21462,8 @@ Expected function or array of functions, received type ${typeof value}.`);
 			"initial-text": $props.initialText,
 			url: $props.field.autocompleteUrl,
 			"request-params": $props.requestParams,
+			"dependency-context": $setup.dependencyContext,
+			"dependency-ready": $setup.dependencyReady,
 			label: $props.field.title,
 			rules: $setup.rules,
 			error: !!$props.error,
@@ -21370,6 +21478,8 @@ Expected function or array of functions, received type ${typeof value}.`);
 			"initial-text",
 			"url",
 			"request-params",
+			"dependency-context",
+			"dependency-ready",
 			"label",
 			"rules",
 			"error",
@@ -21494,6 +21604,10 @@ Expected function or array of functions, received type ${typeof value}.`);
 				type: String,
 				required: true
 			},
+			requestParams: {
+				type: Object,
+				default: () => ({})
+			},
 			label: {
 				type: String,
 				default: ""
@@ -21531,7 +21645,10 @@ Expected function or array of functions, received type ${typeof value}.`);
 					return;
 				}
 				try {
-					const items = await post(props.url, { term }, props.communicationError);
+					const items = await post(props.url, {
+						...props.requestParams,
+						term
+					}, props.communicationError);
 					update(() => {
 						options.value = items.map((item, index) => ({
 							key: index,
@@ -21681,6 +21798,7 @@ Expected function or array of functions, received type ${typeof value}.`);
 		setup(__props, { expose: __expose }) {
 			const props = __props;
 			const $q = useQuasar();
+			const formEpoch = /* @__PURE__ */ ref(0);
 			const icons = {
 				add: matAdd,
 				close: matClose,
@@ -21939,6 +22057,7 @@ Expected function or array of functions, received type ${typeof value}.`);
 				}
 			}
 			function openForm(record) {
+				formEpoch.value++;
 				if (form.saving) return;
 				form.record = record;
 				form.completed = 0;
@@ -21958,6 +22077,17 @@ Expected function or array of functions, received type ${typeof value}.`);
 				form.open = true;
 			}
 			const filledWith = {};
+			function updateField(field, value) {
+				const previous = form.values[field.name];
+				form.values[field.name] = value;
+				if (String(previous ?? "") !== String(value ?? "")) for (const name of clearDependentValues(field.name, fields, form.values)) delete form.errors[name];
+				if (field.type === "select") fillFrom(field);
+			}
+			function updateFilter(field, value) {
+				const previous = filters[field.name];
+				filters[field.name] = value;
+				if (String(previous ?? "") !== String(value ?? "")) clearDependentValues(field.name, fields, filters);
+			}
 			async function fillFrom(field) {
 				const value = form.values[field.name];
 				if (!field.fillUrl || value === "" || value === null || value === void 0 || filledWith[field.name] === value) return;
@@ -22114,6 +22244,7 @@ Expected function or array of functions, received type ${typeof value}.`);
 			const __returned__ = {
 				props,
 				$q,
+				formEpoch,
 				icons,
 				texts,
 				urls,
@@ -22181,6 +22312,8 @@ Expected function or array of functions, received type ${typeof value}.`);
 				runSelectionAction,
 				openForm,
 				filledWith,
+				updateField,
+				updateFilter,
 				fillFrom,
 				save,
 				confirm,
@@ -22284,6 +22417,15 @@ Expected function or array of functions, received type ${typeof value}.`);
 				},
 				get sequenceRange() {
 					return sequenceRange;
+				},
+				get lookupContext() {
+					return lookupContext;
+				},
+				get dependenciesReady() {
+					return dependenciesReady;
+				},
+				get clearDependentValues() {
+					return clearDependentValues;
 				}
 			};
 			Object.defineProperty(__returned__, "__isScriptSetup", {
@@ -22327,44 +22469,50 @@ Expected function or array of functions, received type ${typeof value}.`);
 				default: withCtx(() => [(openBlock(true), createElementBlock(Fragment, null, renderList($setup.filterFields, (field) => {
 					return openBlock(), createElementBlock(Fragment, { key: field.name }, [field.type === "autocomplete" ? (openBlock(), createBlock($setup["LookupSelect"], {
 						key: 0,
-						modelValue: $setup.filters[field.name],
-						"onUpdate:modelValue": ($event) => $setup.filters[field.name] = $event,
+						"model-value": $setup.filters[field.name],
+						"onUpdate:modelValue": ($event) => $setup.updateFilter(field, $event),
 						class: "ck-q-filter",
 						url: field.autocompleteUrl,
 						"request-params": $setup.requestParams,
+						"dependency-context": $setup.lookupContext(field, $setup.fields, $setup.filters),
+						"dependency-ready": $setup.dependenciesReady($setup.lookupContext(field, $setup.fields, $setup.filters)),
 						label: field.title,
 						"no-results": $setup.texts.noDataAvailable,
 						"communication-error": $setup.texts.serverCommunicationError,
 						dense: "",
 						outlined: ""
 					}, null, 8, [
-						"modelValue",
+						"model-value",
 						"onUpdate:modelValue",
 						"url",
 						"request-params",
+						"dependency-context",
+						"dependency-ready",
 						"label",
 						"no-results",
 						"communication-error"
 					])) : field.suggestUrl ? (openBlock(), createBlock($setup["SuggestInput"], {
 						key: 1,
-						modelValue: $setup.filters[field.name],
-						"onUpdate:modelValue": ($event) => $setup.filters[field.name] = $event,
+						"model-value": $setup.filters[field.name],
+						"onUpdate:modelValue": ($event) => $setup.updateFilter(field, $event),
 						class: "ck-q-filter",
 						url: field.suggestUrl,
+						"request-params": $setup.requestParams,
 						label: field.title,
 						"communication-error": $setup.texts.serverCommunicationError,
 						dense: "",
 						outlined: ""
 					}, null, 8, [
-						"modelValue",
+						"model-value",
 						"onUpdate:modelValue",
 						"url",
+						"request-params",
 						"label",
 						"communication-error"
 					])) : field.options ? (openBlock(), createBlock($setup["QSelect"], {
 						key: 2,
-						modelValue: $setup.filters[field.name],
-						"onUpdate:modelValue": ($event) => $setup.filters[field.name] = $event,
+						"model-value": $setup.filters[field.name],
+						"onUpdate:modelValue": ($event) => $setup.updateFilter(field, $event),
 						class: "ck-q-filter",
 						options: field.options,
 						label: field.title,
@@ -22374,14 +22522,14 @@ Expected function or array of functions, received type ${typeof value}.`);
 						dense: "",
 						outlined: ""
 					}, null, 8, [
-						"modelValue",
+						"model-value",
 						"onUpdate:modelValue",
 						"options",
 						"label"
 					])) : (openBlock(), createBlock($setup["QInput"], {
 						key: 3,
-						modelValue: $setup.filters[field.name],
-						"onUpdate:modelValue": ($event) => $setup.filters[field.name] = $event,
+						"model-value": $setup.filters[field.name],
+						"onUpdate:modelValue": ($event) => $setup.updateFilter(field, $event),
 						class: "ck-q-filter",
 						autocomplete: "off",
 						label: field.title,
@@ -22389,7 +22537,7 @@ Expected function or array of functions, received type ${typeof value}.`);
 						outlined: "",
 						clearable: ""
 					}, null, 8, [
-						"modelValue",
+						"model-value",
 						"onUpdate:modelValue",
 						"label"
 					]))], 64);
@@ -22683,26 +22831,30 @@ Expected function or array of functions, received type ${typeof value}.`);
 							default: withCtx(() => [createVNode($setup["QCardSection"], { class: "ck-q-form-fields" }, {
 								default: withCtx(() => [(openBlock(true), createElementBlock(Fragment, null, renderList($setup.formFields, (field) => {
 									return openBlock(), createBlock($setup["FieldInput"], {
-										key: field.name,
-										modelValue: $setup.form.values[field.name],
-										"onUpdate:modelValue": ($event) => $setup.form.values[field.name] = $event,
+										key: field.name + ":" + $setup.formEpoch,
+										"model-value": $setup.form.values[field.name],
 										field,
 										"request-params": $setup.requestParams,
+										"form-values": $setup.form.values,
+										"all-fields": $setup.fields,
 										"initial-text": $setup.form.record && field.textField ? String($setup.form.record[field.textField] || "") : "",
 										texts: $setup.texts,
 										error: $setup.form.errors[field.name] || "",
 										readonly: $setup.form.saving || $setup.sequenceReadonly(field.name),
-										onFocusout: ($event) => $setup.fillFrom(field)
+										onFocusout: ($event) => $setup.fillFrom(field),
+										"onUpdate:modelValue": ($event) => $setup.updateField(field, $event)
 									}, null, 8, [
-										"modelValue",
-										"onUpdate:modelValue",
+										"model-value",
 										"field",
 										"request-params",
+										"form-values",
+										"all-fields",
 										"initial-text",
 										"texts",
 										"error",
 										"readonly",
-										"onFocusout"
+										"onFocusout",
+										"onUpdate:modelValue"
 									]);
 								}), 128))]),
 								_: 1

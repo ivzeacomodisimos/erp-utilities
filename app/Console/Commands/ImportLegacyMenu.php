@@ -21,7 +21,7 @@ class ImportLegacyMenu extends Command
         }
         try {
             $source = DB::connection('intranet_mysql');
-            $menus = $source->table('intranet_menu_aplicaciones')->select(['ID', 'PADRE', 'DES', 'URL', 'ORDEN', 'PUBLICA', 'ACTIVADO', 'DESDETALLE'])->get()->map(fn (object $row): array => (array) $row)->all();
+            $menus = $source->table('intranet_menu_aplicaciones')->select(['ID', 'PADRE', 'DES', 'URL', 'ORDEN', 'PUBLICA', 'ACTIVADO', 'DESDETALLE', 'IMAGENICONO', 'INDICADOR_CONCATENAR_ID'])->get()->map(fn (object $row): array => (array) $row)->all();
             $users = $source->table('intranet_usuarios')->select(['US_Id', 'US_Nombre', 'US_Apellidos', 'US_UserName', 'US_Estado', 'US_SuperUsuario'])->get()->map(fn (object $row): array => (array) $row)->all();
             $grants = $source->table('intranet_menu_aplicaciones_accesos')->select(['id_usuario', 'id_OpcionRestringida', 'Consulta', 'Creacion', 'Modificacion', 'Eliminacion', 'Aprobacion'])->get()->map(fn (object $row): array => (array) $row)->all();
             if ($this->option('dry-run')) {

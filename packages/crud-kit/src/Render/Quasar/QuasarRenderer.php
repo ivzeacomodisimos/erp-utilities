@@ -143,6 +143,9 @@ final class QuasarRenderer implements Renderer
     if ($field->type() === Field::AUTOCOMPLETE) {
       $schema['autocompleteUrl'] = self::url($actionUrl, $crud, 'autocomplete') . '&field=' . rawurlencode($field->name());
       $schema['textField'] = $field->textColumn();
+      if ($field->getDependsOn() !== null) {
+        $schema['dependsOn'] = $field->getDependsOn();
+      }
     }
     return $schema;
   }

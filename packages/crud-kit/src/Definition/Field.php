@@ -56,6 +56,8 @@ final class Field
   private $serverValue = null;
   /** @var string|null custom action that fills the form when the user leaves this field */
   private $fillAction = null;
+  /** @var string|null form field that scopes an autocomplete */
+  private $dependsOn = null;
   /** @var mixed what is stored when the field is left empty */
   private $emptyValue = null;
   /** @var string|null */
@@ -228,6 +230,20 @@ final class Field
   public function getFillAction()
   {
     return $this->fillAction;
+  }
+
+  public function dependsOn(string $field): self
+  {
+    if ($this->type !== self::AUTOCOMPLETE || !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $field) || $field === $this->name) {
+      throw new InvalidArgumentException('An autocomplete must depend on another valid field.');
+    }
+    $this->dependsOn = $field;
+    return $this;
+  }
+
+  public function getDependsOn(): ?string
+  {
+    return $this->dependsOn;
   }
 
   /**

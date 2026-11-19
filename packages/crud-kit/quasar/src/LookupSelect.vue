@@ -1,5 +1,6 @@
 <template>
   <q-select
+    :key="contextKey"
     :model-value="modelValue"
     :options="options"
     :label="label"
@@ -8,6 +9,7 @@
     :error-message="errorMessage"
     :dense="dense"
     :outlined="outlined"
+    :disable="!dependencyReady"
     use-input
     input-debounce="300"
     emit-value
@@ -39,7 +41,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { QSelect, QItem, QItemLabel, QItemSection, QSpinner } from 'quasar';
 import { post } from './api';
 
@@ -61,6 +63,8 @@ const props = defineProps({
   noResults: { type: String, default: '—' },
   communicationError: { type: String, default: 'Error' },
   requestParams: { type: Object, default: () => ({}) },
+  dependencyContext: { type: Object, default: null },
+  dependencyReady: { type: Boolean, default: true },
 });
 const emit = defineEmits(['update:modelValue']);
 
@@ -75,6 +79,19 @@ function initialOptions() {
 }
 
 const options = ref(initialOptions());
+const contextKey = computed(() => JSON.stringify(props.dependencyContext));
+let generation = 0;
+let pendingAbort = null;
+
+watch(contextKey, () => {
+  generation++;
+  if (pendingAbort) pendingAbort();
+  pendingAbort = null;
+  selectedText.value = '';
+  options.value = [];
+});
+
+onBeforeUnmount(() => { generation++; });
 
 watch(() => props.initialText, (text) => {
   selectedText.value = text;
@@ -88,6 +105,13 @@ function select(value) {
 }
 
 async function search(term, update, abort) {
+  const version = ++generation;
+  const context = contextKey.value;
+  pendingAbort = abort;
+  if (!props.dependencyReady) {
+    update(() => { options.value = []; });
+    return;
+  }
   if (!term) {
     update(() => {
       options.value = initialOptions();
@@ -95,12 +119,19 @@ async function search(term, update, abort) {
     return;
   }
   try {
-    const items = await post(props.url, { ...props.requestParams, term }, props.communicationError);
+    const params = { ...props.requestParams, term };
+    if (props.dependencyContext) params.lookup_context = context;
+    const items = await post(props.url, params, props.communicationError);
+    if (version !== generation || context !== contextKey.value) return;
+    pendingAbort = null;
     update(() => {
       options.value = items.map((item) => ({ value: item.id, label: item.label, caption: item.caption || '' }));
     });
   } catch (e) {
-    abort();
+    if (version === generation && context === contextKey.value) {
+      pendingAbort = null;
+      abort();
+    }
   }
 }
 </script>

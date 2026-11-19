@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\SystemsManagementController;
 use App\Models\User;
 use App\Support\Auth\JwtTokens;
 use App\Support\Kits\MenuKitPermissions;
@@ -70,6 +71,29 @@ class MenuAccessTest extends TestCase
         $this->postJson('/administracion/permisos?crud=access-permisos&action=create', ['user_id' => $user->id, 'menu_item_id' => 102])->assertForbidden();
     }
 
+    public function test_menu_name_suggestions_show_hierarchy_and_preserve_literal_text_filtering(): void
+    {
+        $url = '/administracion/menu?crud=access-menu&action=suggest&field=label';
+        $this->login($this->account());
+        $this->postJson($url, ['term' => 'Consulta'])->assertForbidden();
+        $this->login($this->account('administrador'));
+        DB::table('menu_items')->insert([
+            ['id' => 106, 'parent_id' => 74, 'label' => 'Consulta pedidos', 'legacy_url' => ''],
+            ['id' => 107, 'parent_id' => 50, 'label' => 'Descuento 10%', 'legacy_url' => ''],
+            ['id' => 0, 'parent_id' => 0, 'label' => 'Inicio', 'legacy_url' => ''],
+        ]);
+        $this->postJson($url, ['term' => 'Consulta pedi'])->assertOk()->assertExactJson([
+            ['value' => 'Consulta pedidos', 'label' => 'Consulta pedidos', 'caption' => 'Aplicaciones › Ventas'],
+            ['value' => 'Consulta pedidos', 'label' => 'Consulta pedidos', 'caption' => 'Públicas'],
+        ]);
+        $this->postJson($url, ['term' => '%'])->assertOk()->assertJsonCount(1)->assertJsonPath('0.label', 'Descuento 10%');
+        $this->postJson($url, ['term' => ''])->assertOk()->assertExactJson([]);
+        $this->postJson('/administracion/menu?crud=access-menu&action=suggest&field=legacy_url', ['term' => 'Consulta'])->assertUnprocessable();
+        $this->get($url)->assertStatus(405);
+        $this->postJson('/administracion/menu?crud=access-menu&action=list', ['label' => 'Consulta pedi'])
+            ->assertOk()->assertJsonPath('TotalRecordCount', 2);
+    }
+
     public function test_public_options_are_authenticated_and_do_not_grant_write_access(): void
     {
         DB::table('menu_items')->where('id', 101)->update(['is_public' => true]);
@@ -80,6 +104,32 @@ class MenuAccessTest extends TestCase
         $this->get('/menu/101')->assertRedirect('/login');
         $this->login($user);
         $this->get('/menu/101')->assertRedirect('/testing/orders');
+    }
+
+    public function test_parent_autocomplete_resolves_ids_hierarchy_and_existing_labels_without_allowing_cycles(): void
+    {
+        $url = '/administracion/menu?crud=access-menu&action=autocomplete&field=parent_id';
+        $this->login($this->account());
+        $this->postJson($url, ['term' => 'Ventas'])->assertForbidden();
+        $this->login($this->account('administrador'));
+        $this->postJson($url, ['term' => 'Ventas'])->assertOk()->assertExactJson([
+            ['id' => 100, 'label' => '100 · Ventas', 'caption' => 'Aplicaciones'],
+        ]);
+        $this->postJson($url, ['term' => '101'])->assertOk()->assertExactJson([
+            ['id' => 101, 'label' => '101 · Consulta pedidos', 'caption' => 'Aplicaciones › Ventas'],
+        ]);
+        $this->postJson($url, ['term' => 'Raíz'])->assertOk()->assertExactJson([
+            ['id' => 0, 'label' => 'Raíz', 'caption' => 'Sin opción padre'],
+        ]);
+        $this->postJson('/administracion/menu?crud=access-menu&action=autocomplete&field=legacy_url', ['term' => 'Ventas'])->assertUnprocessable();
+        $this->postJson('/administracion/menu?crud=access-menu&action=list', ['label' => 'Consulta pedidos'])->assertOk()
+            ->assertJsonPath('Records.0.parent_id', 100)->assertJsonPath('Records.0.parent_id__text', '100 · Ventas');
+        $values = ['id' => 101, 'revision' => 1, 'label' => 'Consulta pedidos', 'active' => 1, 'is_public' => 0];
+        $saveUrl = '/administracion/menu?crud=access-menu&action=update';
+        $this->postJson($saveUrl, ['parent_id' => 101] + $values)->assertUnprocessable();
+        $this->postJson($saveUrl, ['parent_id' => 999999] + $values)->assertUnprocessable();
+        $this->postJson($saveUrl, ['parent_id' => 74] + $values)->assertOk()
+            ->assertJsonPath('Record.parent_id', 74)->assertJsonPath('Record.parent_id__text', '74 · Públicas');
     }
 
     public function test_inactive_parent_cycles_and_revocation_fail_closed(): void
@@ -185,10 +235,25 @@ class MenuAccessTest extends TestCase
         $this->grant($user);
         $this->login($admin);
         $fixture = [];
-        foreach (['menu', 'permisos', 'usuarios', 'opciones'] as $section) {
+        DB::table('option_grants')->insert(['user_id' => $user->id, 'module' => 'ventas', 'file' => 'pedidos',
+            'option_id' => 7, 'can_read' => true, 'revision' => 1]);
+        foreach (array_keys(SystemsManagementController::TITLES) as $index => $section) {
+            DB::table('menu_items')->insert(['id' => 300 + $index, 'parent_id' => 50, 'label' => $section,
+                'legacy_url' => '', 'migration_key' => 'systems.'.$section, 'migration_enabled' => true]);
+        }
+        DB::table('system_objects')->insert(['id' => 1210, 'parent_id' => 0, 'name' => 'GESTIONES_ASIGNADAS', 'default_value' => '-']);
+        foreach (['menu', 'permisos', 'usuarios', 'opciones', 'rutas', 'programas', 'generador', 'campos'] as $section) {
+            (new \ReflectionProperty(QuasarRenderer::class, 'assetsWritten'))->setValue(null, false);
+            $path = '/administracion/'.match ($section) {
+                'rutas' => 'rutas-menu', 'programas' => 'registro-rutas', 'generador' => 'programas', 'campos' => 'campos-programa', default => $section
+            };
+            $fixture[$section] = $this->get($path)->assertOk()->getContent();
+            $fixture[$section.'_list'] = $this->postJson($path.'?crud=access-'.$section.'&action=list')->assertOk()->json();
+        }
+        foreach (array_keys(SystemsManagementController::TITLES) as $section) {
             (new \ReflectionProperty(QuasarRenderer::class, 'assetsWritten'))->setValue(null, false);
             $fixture[$section] = $this->get('/administracion/'.$section)->assertOk()->getContent();
-            $fixture[$section.'_list'] = $this->postJson('/administracion/'.$section.'?crud=access-'.$section.'&action=list')->assertOk()->json();
+            $fixture[$section.'_list'] = $this->postJson('/administracion/'.$section.'?crud=systems-'.$section.'&action=list')->assertOk()->json();
         }
         $this->login($user);
         $fixture['user'] = $this->get('/')->assertOk()->getContent();

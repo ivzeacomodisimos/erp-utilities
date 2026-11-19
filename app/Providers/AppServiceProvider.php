@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Support\Administration\SystemsAccess;
 use App\Support\Auth\AccessRoles;
+use App\Support\Menu\ManagedApplicationRoutes;
 use App\Support\Menu\OptionAccess;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -17,6 +19,13 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        if ($this->app->runningInConsole() && ! $this->app->runningUnitTests()
+            && in_array($_SERVER['argv'][1] ?? '', ['route:list', 'route:cache'], true)) {
+            $this->app->booted(fn () => app(ManagedApplicationRoutes::class)->load());
+        }
+        foreach (array_keys(SystemsAccess::SECTIONS) as $section) {
+            Gate::define('systems.'.$section, fn (User $user): bool => app(SystemsAccess::class)->allows($user, $section));
+        }
         Gate::define('option-permissions.manage', fn (User $user): bool => app(OptionAccess::class)->canManage($user));
         Gate::define('option.access', fn (User $user, string $module, string $file, int $option, string $operation = 'access'): bool => app(OptionAccess::class)->allows($user, $module, $file, $option, $operation));
         $permissions = [];
@@ -25,6 +34,9 @@ class AppServiceProvider extends ServiceProvider
         }
         foreach (array_unique($permissions) as $permission) {
             Gate::define($permission, fn (User $user): bool => AccessRoles::allows($user, $permission));
+        }
+        foreach (['menu.manage' => ['menuaplic', 'mantmenu', 1], 'grants.manage' => ['menuaplic', 'mantaccesos', 2], 'users.manage' => ['aplicacion', 'usuarios', 3]] as $ability => $context) {
+            Gate::define($ability, fn (User $user): bool => app(OptionAccess::class)->allows($user, ...$context));
         }
         RateLimiter::for('corporate-login', function (Request $request): array {
             $username = $request->input('username');

@@ -1,0 +1,5 @@
+{
+  "The given data was invalid.": "Revise los datos enviados y corrija los campos indicados.",
+  "(and :count more error)": "(y :count error adicional)",
+  "(and :count more errors)": "(y :count errores adicionales)"
+}

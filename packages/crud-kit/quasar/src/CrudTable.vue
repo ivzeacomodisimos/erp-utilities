@@ -5,10 +5,13 @@
       <template v-for="field in filterFields" :key="field.name">
         <LookupSelect
           v-if="field.type === 'autocomplete'"
-          v-model="filters[field.name]"
+          :model-value="filters[field.name]"
+          @update:model-value="updateFilter(field, $event)"
           class="ck-q-filter"
           :url="field.autocompleteUrl"
           :request-params="requestParams"
+          :dependency-context="lookupContext(field, fields, filters)"
+          :dependency-ready="dependenciesReady(lookupContext(field, fields, filters))"
           :label="field.title"
           :no-results="texts.noDataAvailable"
           :communication-error="texts.serverCommunicationError"
@@ -17,9 +20,11 @@
         />
         <SuggestInput
           v-else-if="field.suggestUrl"
-          v-model="filters[field.name]"
+          :model-value="filters[field.name]"
+          @update:model-value="updateFilter(field, $event)"
           class="ck-q-filter"
           :url="field.suggestUrl"
+          :request-params="requestParams"
           :label="field.title"
           :communication-error="texts.serverCommunicationError"
           dense
@@ -27,7 +32,8 @@
         />
         <q-select
           v-else-if="field.options"
-          v-model="filters[field.name]"
+          :model-value="filters[field.name]"
+          @update:model-value="updateFilter(field, $event)"
           class="ck-q-filter"
           :options="field.options"
           :label="field.title"
@@ -37,7 +43,7 @@
           dense
           outlined
         />
-        <q-input v-else v-model="filters[field.name]" class="ck-q-filter" autocomplete="off" :label="field.title" dense outlined clearable />
+        <q-input v-else :model-value="filters[field.name]" @update:model-value="updateFilter(field, $event)" class="ck-q-filter" autocomplete="off" :label="field.title" dense outlined clearable />
       </template>
       <q-btn type="submit" color="primary" unelevated :label="texts.filter"
         :loading="loading" :disable="loading || form.saving || selectionBusy" />
@@ -173,15 +179,18 @@
           <q-card-section class="ck-q-form-fields">
             <FieldInput
               v-for="field in formFields"
-              :key="field.name"
-              v-model="form.values[field.name]"
+              :key="field.name + ':' + formEpoch"
+              :model-value="form.values[field.name]"
               :field="field"
               :request-params="requestParams"
+              :form-values="form.values"
+              :all-fields="fields"
               :initial-text="form.record && field.textField ? String(form.record[field.textField] || '') : ''"
               :texts="texts"
               :error="form.errors[field.name] || ''"
               :readonly="form.saving || sequenceReadonly(field.name)"
               @focusout="fillFrom(field)"
+              @update:model-value="updateField(field, $event)"
             />
           </q-card-section>
           <q-card-actions align="right">
@@ -206,6 +215,7 @@ import LookupSelect from './LookupSelect.vue';
 import SuggestInput from './SuggestInput.vue';
 import { post, CrudError } from './api';
 import { sequenceNow, sequenceRange } from './createSequence';
+import { lookupContext, dependenciesReady, clearDependentValues } from './lookupDependencies';
 
 defineOptions({ name: 'CrudTable', directives: { ClosePopup } });
 
@@ -218,6 +228,7 @@ const props = defineProps({
 defineEmits(['close']);
 
 const $q = useQuasar();
+const formEpoch = ref(0);
 const icons = { add: matAdd, close: matClose, delete: matDelete, edit: matEdit, list: matList, refresh: matRefresh };
 const texts = props.schema.texts;
 const urls = props.schema.urls;
@@ -437,6 +448,7 @@ async function runSelectionAction(action) {
 }
 
 function openForm(record) {
+  formEpoch.value++;
   if (form.saving) return;
   form.record = record;
   form.completed = 0;
@@ -466,6 +478,23 @@ function openForm(record) {
 // Field::fillFrom(): when the user leaves the field, the server fills other fields. Only once
 // per value, so moving through the form does not repeat the request.
 const filledWith = {};
+function updateField(field, value) {
+  const previous = form.values[field.name];
+  form.values[field.name] = value;
+  if (String(previous ?? '') !== String(value ?? '')) {
+    for (const name of clearDependentValues(field.name, fields, form.values)) {
+      delete form.errors[name];
+    }
+  }
+  if (field.type === 'select') fillFrom(field);
+}
+
+function updateFilter(field, value) {
+  const previous = filters[field.name];
+  filters[field.name] = value;
+  if (String(previous ?? '') !== String(value ?? '')) clearDependentValues(field.name, fields, filters);
+}
+
 async function fillFrom(field) {
   const value = form.values[field.name];
   if (!field.fillUrl || value === '' || value === null || value === undefined || filledWith[field.name] === value) {

@@ -1,5 +1,7 @@
 <?php
+
 namespace Tests\Feature;
+
 use App\Models\User;
 use App\Support\Auth\JwtTokens;
 use App\Support\Kits\OptionKitPermissions;
@@ -10,9 +12,13 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Ivandzb\CrudKit\Definition\Crud;
 use Tests\TestCase;
-class OptionPermissionsTest extends TestCase {
+
+class OptionPermissionsTest extends TestCase
+{
     use RefreshDatabase;
-    protected function setUp(): void {
+
+    protected function setUp(): void
+    {
         parent::setUp();
         config(['access.jwt.secret' => str_repeat('option-tests-', 16)]);
         Route::middleware(['web', 'erp.jwt', 'erp.menu', 'erp.option:test.orders,ventas,pedidos,7'])
@@ -29,25 +35,36 @@ class OptionPermissionsTest extends TestCase {
                 'legacy_url' => '', 'migration_enabled' => true, 'migration_key' => $key]);
         }
     }
-    private function account(string $role = 'usuario'): User {
+
+    private function account(string $role = 'usuario'): User
+    {
         return User::factory()->create(['ldap_username' => fake()->unique()->userName(),
             'ldap_guid' => bin2hex(random_bytes(16)), 'erp_active' => true, 'erp_roles' => [$role], 'token_version' => 1]);
     }
-    private function login(User $user): void {
+
+    private function login(User $user): void
+    {
         $this->withToken(app(JwtTokens::class)->issue($user)['token']);
     }
-    private function grant(User $user, array $extra = []): int {
+
+    private function grant(User $user, array $extra = []): int
+    {
         return DB::table('option_grants')->insertGetId($extra + ['user_id' => $user->id, 'module' => 'ventas', 'file' => 'pedidos', 'option_id' => 7]);
     }
-    private function menuGrant(User $user, int $id = 102): void {
+
+    private function menuGrant(User $user, int $id = 102): void
+    {
         DB::table('menu_grants')->insert(['user_id' => $user->id, 'menu_item_id' => $id,
             'can_view' => true, 'can_create' => true, 'can_update' => true, 'can_delete' => true]);
     }
-    public function test_exact_denial_overrides_module_permission_and_only_absent_records_fall_back(): void {
+
+    public function test_exact_denial_overrides_module_permission_and_only_absent_records_fall_back(): void
+    {
         $user = $this->account();
         $access = app(OptionAccess::class);
         $this->grant($user, ['file' => '', 'can_read' => true, 'can_write' => true, 'can_insert' => true, 'can_delete' => true]);
         $this->assertTrue($access->allows($user, 'VENTAS', 'Pedidos', 7));
+        $this->assertTrue($access->allows($user, 'VENTAS ', 'Pedidos ', 7));
         $id = $this->grant($user);
         $this->assertFalse($access->allows($user, 'ventas', 'pedidos', 7));
         $this->assertFalse($access->allows($user, 'ventas', 'pedidos', 7, 'insert'));
@@ -59,7 +76,9 @@ class OptionPermissionsTest extends TestCase {
         DB::table('option_grants')->where('id', $id)->delete();
         $this->assertTrue($access->allows($user, 'ventas', 'pedidos', 7));
     }
-    public function test_insert_and_delete_are_independent_of_legacy_entry_and_unknown_operations_fail_closed(): void {
+
+    public function test_insert_and_delete_are_independent_of_legacy_entry_and_unknown_operations_fail_closed(): void
+    {
         $user = $this->account();
         $this->grant($user, ['can_insert' => true, 'can_delete' => true]);
         $access = app(OptionAccess::class);
@@ -74,7 +93,9 @@ class OptionPermissionsTest extends TestCase {
         $this->assertTrue($access->allows($admin, 'ventas', 'pedidos', 7, 'delete'));
         $this->assertFalse($access->allows($admin, 'ventas', 'pedidos', 7, 'unknown'));
     }
-    public function test_direct_requests_use_server_context_and_changes_apply_to_existing_sessions(): void {
+
+    public function test_direct_requests_use_server_context_and_changes_apply_to_existing_sessions(): void
+    {
         $user = $this->account();
         $this->menuGrant($user);
         $this->login($user);
@@ -84,6 +105,9 @@ class OptionPermissionsTest extends TestCase {
         $this->postJson('/testing/option/write', ['can_write' => 1, 'user_id' => 1])->assertForbidden();
         DB::table('option_grants')->where('id', $id)->update(['can_write' => true]);
         $this->postJson('/testing/option/write')->assertOk();
+        DB::table('menu_grants')->where('user_id', $user->id)->update(['can_update' => false]);
+        $this->postJson('/testing/option/write')->assertForbidden();
+        DB::table('menu_grants')->where('user_id', $user->id)->update(['can_update' => true]);
         DB::table('option_grants')->where('id', $id)->update(['can_read' => false, 'can_write' => false]);
         $this->get('/testing/option')->assertForbidden();
         $this->login($this->account('administrador'));
@@ -91,7 +115,9 @@ class OptionPermissionsTest extends TestCase {
         $this->get('/testing/option')->assertForbidden();
         $this->postJson('/testing/option/write')->assertForbidden();
     }
-    public function test_crud_buttons_and_server_operations_share_permissions(): void {
+
+    public function test_crud_buttons_and_server_operations_share_permissions(): void
+    {
         $user = $this->account();
         $this->menuGrant($user);
         $this->grant($user, ['can_read' => true, 'can_insert' => true]);
@@ -104,7 +130,9 @@ class OptionPermissionsTest extends TestCase {
         DB::table('menu_items')->where('id', 102)->update(['migration_enabled' => false]);
         $this->assertFalse($adapter->allows($crud, Crud::CREATE, null));
     }
-    public function test_administration_validates_identity_uniqueness_revisions_and_audits_revocation(): void {
+
+    public function test_administration_validates_identity_uniqueness_revisions_and_audits_revocation(): void
+    {
         $admin = $this->account('administrador');
         $user = $this->account();
         $this->login($admin);
@@ -130,7 +158,9 @@ class OptionPermissionsTest extends TestCase {
         $this->postJson($base.'list', ['action' => 'create'])->assertOk();
         $this->assertDatabaseCount('option_grants', 0);
     }
-    public function test_legacy_management_options_three_and_six_are_preserved_without_granting_menu_administration(): void {
+
+    public function test_legacy_management_options_three_and_six_are_preserved_without_granting_menu_administration(): void
+    {
         $user = $this->account();
         $this->menuGrant($user, 101);
         $this->login($user);
@@ -144,7 +174,9 @@ class OptionPermissionsTest extends TestCase {
         DB::table('option_grants')->where('id', $id)->delete();
         $this->get('/administracion/opciones')->assertForbidden();
     }
-    public function test_anonymous_and_cookie_mutations_cannot_bypass_authentication_or_csrf(): void {
+
+    public function test_anonymous_and_cookie_mutations_cannot_bypass_authentication_or_csrf(): void
+    {
         $this->get('/administracion/opciones')->assertRedirect('/login');
         $this->postJson('/administracion/opciones?crud=access-opciones&action=create')->assertUnauthorized();
         $admin = $this->account('administrador');

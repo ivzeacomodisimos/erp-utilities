@@ -2,16 +2,35 @@
 
 return [
     'migrated_menu_options' => [
+        'access.menu' => ['label' => 'Menú', 'route' => 'access.manage', 'parameters' => ['section' => 'menu'], 'ability' => 'menu.manage', 'bootstrap' => true, 'administration' => true,
+            'legacy' => ['module' => 'menuaplic', 'file' => 'mantmenu']],
+        'systems.empleados' => ['label' => 'Empleados', 'route' => 'systems.empleados', 'ability' => 'systems.empleados', 'administration' => true,
+            'legacy' => ['module' => 'aplicacion', 'file' => 'empleados']],
+        'systems.tipos-documento' => ['label' => 'Tipos de documento por defecto', 'route' => 'systems.tipos-documento', 'ability' => 'systems.tipos-documento', 'administration' => true,
+            'legacy' => ['module' => 'menuaplic', 'file' => 'manttiposdocumentodefecto']],
+        'systems.objetos' => ['label' => 'Objetos del sistema', 'route' => 'systems.objetos', 'ability' => 'systems.objetos', 'administration' => true,
+            'legacy' => ['module' => 'menuaplic', 'file' => 'objetos']],
+        'systems.objetos-usuarios' => ['label' => 'Objetos por usuario', 'route' => 'systems.objetos-usuarios', 'ability' => 'systems.objetos-usuarios', 'administration' => true,
+            'legacy' => ['module' => 'menuaplic', 'file' => 'objetosyusuarios']],
         'access.options' => [
+            'administration' => true,
+            'legacy' => ['module' => 'menuaplic', 'file' => 'mantpermisosopcion'],
             'label' => 'Permisos de opciones y botones',
             'route' => 'access.options',
+            'ability' => 'option-permissions.manage',
         ],
         'access.permissions' => [
+            'administration' => true,
+            'ability' => 'grants.manage',
+            'legacy' => ['module' => 'menuaplic', 'file' => 'mantaccesos'],
             'label' => 'Administración de permisos',
             'route' => 'access.manage',
             'parameters' => ['section' => 'permisos'],
         ],
         'access.users' => [
+            'administration' => true,
+            'ability' => 'users.manage',
+            'legacy' => ['module' => 'aplicacion', 'file' => 'usuarios'],
             'label' => 'Administración de usuarios',
             'route' => 'access.manage',
             'parameters' => ['section' => 'usuarios'],

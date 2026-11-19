@@ -17,7 +17,12 @@ class MenuAccess
             return $denied;
         }
         $item = DB::table('menu_items')->where('id', $id)->first();
-        if (! $item || ! $item->migration_enabled || ! app(MigratedMenuRoutes::class)->url($item->migration_key) || ! $this->activePath($item)) {
+        $options = app(MigratedMenuRoutes::class)->options();
+        if (! $item || ! $item->migration_enabled || ! isset($options[$item->migration_key ?? '']) || ! $this->activePath($item)) {
+            return $denied;
+        }
+        $ability = $options[$item->migration_key]['ability'] ?? null;
+        if ($ability && ! $user->can($ability)) {
             return $denied;
         }
         if (in_array('administrador', $user->erp_roles ?? [], true)) {
@@ -37,14 +42,18 @@ class MenuAccess
         if (! $user->hasErpAccess()) {
             return [];
         }
-        $rows = DB::table('menu_items')->where('active', true)->orderBy('sort_order')->orderBy('id')->get()->keyBy('id');
+        $rows = DB::table('menu_items')->where('active', true)->where('archived', false)->orderBy('sort_order')->orderBy('id')->get()->keyBy('id');
         $grantIds = DB::table('menu_grants')->where('user_id', $user->id)->get()->filter(
             fn (object $grant): bool => $grant->can_view || $grant->can_create || $grant->can_update || $grant->can_delete || $grant->can_approve
         )->pluck('menu_item_id')->all();
         $admin = in_array('administrador', $user->erp_roles ?? [], true);
         $visible = [];
+        $options = app(MigratedMenuRoutes::class)->options();
         foreach ($rows as $row) {
-            if (! $row->migration_enabled || ! app(MigratedMenuRoutes::class)->url($row->migration_key)) {
+            if ($options[$row->migration_key ?? '']['administration'] ?? false) {
+                continue;
+            }
+            if (! $row->migration_enabled || ! isset($options[$row->migration_key ?? ''])) {
                 continue;
             }
             if (! $admin && ! $row->is_public && $row->parent_id !== 74 && ! in_array($row->id, $grantIds, true)) {
@@ -97,7 +106,7 @@ class MenuAccess
     {
         $seen = [];
         while (true) {
-            if (! $item->active || in_array($item->id, $seen, true)) {
+            if (! $item->active || ($item->archived ?? false) || in_array($item->id, $seen, true)) {
                 return false;
             }
             if (in_array($item->id, [50, 74], true)) {
@@ -135,7 +144,7 @@ class MenuAccess
         }
         $separator = str_contains($destination, '?') ? '&' : '?';
 
-        return $destination.$separator.'idMenu='.$item->id;
+        return ($item->append_legacy_id ?? true) ? $destination.$separator.'idMenu='.$item->id : $destination;
     }
 
     private function origin(string $url): string

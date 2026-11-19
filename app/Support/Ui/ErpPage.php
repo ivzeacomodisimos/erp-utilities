@@ -4,7 +4,9 @@ namespace App\Support\Ui;
 
 use App\Models\User;
 use App\Support\Menu\MenuAccess;
+use App\Support\Menu\MigratedMenuRoutes;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Ivandzb\UiKit\Component\Button;
 use Ivandzb\UiKit\Component\Menu;
 use Ivandzb\UiKit\Component\MenuItem;
@@ -22,10 +24,27 @@ class ErpPage
             foreach (app(MenuAccess::class)->tree($user) as $item) {
                 $menu->items($item);
             }
+            $administration = [];
             if ($user->can('menu.manage')) {
-                $menu->items(MenuItem::make('Administración')->icon('settings')->items(
-                    MenuItem::make('Menú', route('access.manage', 'menu'))
-                ));
+                $administration[] = MenuItem::make('Menú', route('access.manage', 'menu'))->icon('menu');
+                $administration[] = MenuItem::make('Rutas del menú', route('access.routes'))->icon('route');
+                $administration[] = MenuItem::make('Registro de rutas', route('access.programs'))->icon('add_link');
+                if (in_array('administrador', $user->erp_roles ?? [], true)) {
+                    $administration[] = MenuItem::make('Crear programa', route('access.generator'))->icon('add_box');
+                    $administration[] = MenuItem::make('Asistente de alta', route('access.generator.wizard'))->icon('playlist_add_check');
+                }
+            }
+            $bindings = DB::table('menu_items')->whereNotNull('migration_key')->get()->keyBy('migration_key');
+            $registry = app(MigratedMenuRoutes::class);
+            $options = $registry->options();
+            foreach (['access.permissions', 'access.users', 'systems.empleados', 'systems.tipos-documento', 'access.options', 'systems.objetos', 'systems.objetos-usuarios'] as $key) {
+                $item = $bindings->get($key);
+                if ($item && app(MenuAccess::class)->permissions($user, $item->id)['view']) {
+                    $administration[] = MenuItem::make($options[$key]['label'], $registry->url($key));
+                }
+            }
+            if ($administration !== []) {
+                $menu->items(MenuItem::make('Administración')->icon('settings')->items(...$administration));
             }
             $theme->menu($menu)->user($user->name);
         }
