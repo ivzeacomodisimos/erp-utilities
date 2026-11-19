@@ -124,6 +124,37 @@ class GeneratedCrudStorageTest extends TestCase
         $this->operation($program, 'list')->assertForbidden();
     }
 
+    public function test_listing_uses_unique_sort_columns_and_stable_pagination(): void
+    {
+        $this->login();
+        $program = $this->draft('ordenamiento')->assertOk()->json('Record');
+        $this->field($program)->assertOk();
+        $this->prepare($program)->assertOk();
+        $this->bind($program);
+        foreach (['B', 'A', 'A'] as $name) {
+            $this->operation($program, 'create', ['nombre' => $name])->assertOk();
+        }
+        $connection = DB::connection('crud_business');
+        $connection->enableQueryLog();
+        try {
+            foreach (['' => [1, 2, 3], 'id ASC' => [1, 2, 3], 'id DESC' => [3, 2, 1],
+                'id DESC, id ASC' => [3, 2, 1], 'nombre ASC, nombre DESC' => [2, 3, 1]] as $sort => $expected) {
+                foreach ($expected as $offset => $id) {
+                    $connection->flushQueryLog();
+                    $this->operation($program, 'list', array_filter(['jtSorting' => $sort, 'jtStartIndex' => $offset, 'jtPageSize' => 1], fn (mixed $value): bool => $value !== ''))
+                        ->assertOk()->assertJsonPath('TotalRecordCount', 3)->assertJsonPath('Records.0.id', $id);
+                    $sql = collect($connection->getQueryLog())->pluck('query')->first(fn (string $sql): bool => str_starts_with($sql, 'select * from') && str_contains($sql, 'ordenamiento') && str_contains($sql, 'order by'));
+                    $this->assertNotNull($sql);
+                    $order = explode(' limit ', explode(' order by ', $sql)[1])[0];
+                    $this->assertSame(1, substr_count($order, '"id"'), $sql);
+                    $this->assertLessThanOrEqual(1, substr_count($order, '"nombre"'));
+                }
+            }
+        } finally {
+            $connection->disableQueryLog();
+        }
+    }
+
     public function test_existing_external_tables_are_linked_without_altering_their_structure(): void
     {
         $this->login();
@@ -244,6 +275,10 @@ class GeneratedCrudStorageTest extends TestCase
             $record['nombre'] = 'Modificada';
             $record = $this->operation($program, 'update', $record)->assertOk()->json('Record');
             $this->operation($program, 'list', ['nombre' => 'Modificada'])->assertOk()->assertJsonPath('TotalRecordCount', 1);
+            foreach (['id ASC', 'id DESC', 'id ASC, id DESC', 'nombre ASC, nombre DESC', 'nombre DESC, id DESC'] as $sort) {
+                $this->operation($program, 'list', ['jtSorting' => $sort, 'jtStartIndex' => 0, 'jtPageSize' => 10])
+                    ->assertOk()->assertJsonPath('TotalRecordCount', 1)->assertJsonPath('Records.0.id', $record['id']);
+            }
             $child = $this->draft($reference.'_child', 'new', 'intranet_sqlsrv')->assertOk()->json('Record');
             $this->field($child, 'cantidad', 'integer')->assertOk();
             $this->field($child, 'padre_id', 'relation', ['related_program_id' => $program['id'], 'related_menu_id' => $menu,

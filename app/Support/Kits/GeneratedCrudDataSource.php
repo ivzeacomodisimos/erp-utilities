@@ -56,13 +56,18 @@ class GeneratedCrudDataSource implements DataSource
                 }
             }
         }
+        $orderedColumns = [];
         foreach ($query->sorting() as [$name, $direction]) {
-            if ($name === 'id' || isset($fields[$name])) {
+            if (($name === 'id' || isset($fields[$name])) && ! isset($orderedColumns[$name])) {
                 $builder->orderBy($name, $direction);
+                $orderedColumns[$name] = true;
             }
         }
+        if (! isset($orderedColumns['id'])) {
+            $builder->orderBy('id');
+        }
         $total = (clone $builder)->count();
-        $rows = $builder->orderBy('id')->offset($query->offset() ?? 0)->limit(min($query->limit() ?? 20, 100))->get();
+        $rows = $builder->offset($query->offset() ?? 0)->limit(min($query->limit() ?? 20, 100))->get();
         $labels = app(GeneratedCrudRelations::class)->labels($this->definition['relations'], $rows);
         $rows = $rows->map(fn (object $row): array => $this->record($row, $labels))->all();
 
